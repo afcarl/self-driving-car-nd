@@ -1,7 +1,9 @@
 import cv2
 import pandas as pd
 import numpy as np
+import random
 import json
+import csv
 from keras.layers.core import Dense, Flatten, Dropout, Lambda
 from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import MaxPooling2D
@@ -9,25 +11,46 @@ from keras.layers.advanced_activations import ELU
 from keras.models import Sequential
 from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, EarlyStopping
+import sklearn
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 rows, cols, ch = 32, 32, 3
 batch_size = 100
-split_size = 0.1
-samples_per_epoch = 20000
+test_size = 0.1
 angle_offset = 0.27
-validation_samples = 2000
-epoch_count = 4
+epoch_count = 24
+samples_to_remove = 4000
+samples_per_epoch = 20000
+validation_sample_count = 2000
 
-def remove_zero_angle(driving_log, number):
+def remove_zero_angle(samples, entry_count):
     count = 0
-    new_log = driving_log
-    while count < number:
-        index = np.random.randint(0, len(new_log)-1)
-        angles = new_log['steering']
-        if angles.iloc[index] == 0:
-            new_log.drop(new_log.index[[index]], inplace=True)
+    result = samples
+    while count < entry_count:
+        index = np.random.randint(0, len(samples)-1)
+        entry = samples[index]
+        angles = float(entry[3])
+        if angles == 0:
+            result.remove(entry)
             count += 1
-    return new_log
+    return result
+
+def plot_steering_distribution(samples):
+    angles = [float(entry[3]) for entry in samples]
+    plt.hist(angles,bins=1000)
+
+def plot_image(samples):
+    index = random.randint(0, len(samples) - 1)
+    filename = samples[index][0].replace(" ", "")
+    image = cv2.imread(filename)
+    new_image, angle = augment_and_process(image, 0)
+    fig = plt.figure()
+    fig.add_subplot(1,2,1)
+    plt.imshow(image)
+    fig.add_subplot(1,2,2)
+    plt.imshow(new_image)
+    plt.show()
 
 # For learning roads with different brightness
 def random_V(image, angle):
@@ -49,75 +72,46 @@ def angle_jitter(image, angle):
     angle = angle + 0.05*(np.random.uniform() - 0.5)
     return image, angle
 
-# To generate more data
 def random_flip(image, angle):
     if np.random.random() > 0.4:
         image = cv2.flip(image, 1)
         angle = angle*(-1.0)
     return image, angle
 
-def trans_image(image,steer,trans_range):
-    # Translation
-    tr_x = trans_range*np.random.uniform()-trans_range/2
-    steer_ang = steer + tr_x/trans_range*2*.2
-    tr_y = 10*np.random.uniform()-10/2
-    #tr_y = 0
-    Trans_M = np.float32([[1,0,tr_x],[0,1,tr_y]])
-    rows,cols = image.shape[0:2]
-    image_tr = cv2.warpAffine(image,Trans_M,(cols,rows))
-    return image_tr,steer_ang
-
 def crop_image(image):
     cropped_image = image[55:135, 0:image.shape[1]]
     return cropped_image
 
-def augment_and_process(row):
-    angle = row['steering']
-    camera = np.random.choice(['center', 'left', 'right'])
-
-    if camera == 'right':
-        angle -= angle_offset
-    elif camera == 'left':
-        angle += angle_offset
-
-    path = row[camera]
-    datapath = path.replace(" ", "")
-
-    image = cv2.imread(datapath)
-    assert(image != None)
+def augment_and_process(image, angle, shape=(32,32)):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
     image, angle = random_V(image, angle)
     image, angle = random_H(image, angle)
     image, angle = angle_jitter(image, angle)
     image, angle = random_flip(image, angle)
 
     image = crop_image(image)
-    image = cv2.resize(image, (cols, rows))
+    image = cv2.resize(image, shape)
     image = image.astype(np.float32)
     return image, angle
 
-def batch_generator(data):
-    batch_count = data.shape[0] // batch_size
-    i = 0
-    while 1:
-        batch_features = np.zeros((batch_size, rows, cols, ch), dtype=np.float32)
-        batch_labels = np.zeros((batch_size,), dtype=np.float32)
+def get_samples(filename):
+    samples = []
+    with open(filename) as csvfile:
+        catergory = next(csvfile)
+        reader = csv.reader(csvfile)
+        for line in reader:
+            samples.append(line)
+    samples = remove_zero_angle(samples, samples_to_remove)
+    return samples
 
-        j = 0
-        for _, row in data.loc[i*batch_size: (i+1)*batch_size - 1].iterrows():
-            batch_features[j], batch_labels[j] = augment_and_process(row)
-            j += 1
-
-        i += 1
-        if i == batch_count - 1:
-            i = 0
-        yield batch_features, batch_labels
+def save_parameters(m):
+    json_file = open('model.json', mode='w')
+    json.dump(m.to_json(), json_file)
 
 def the_model():
     model = Sequential()
-
     model.add(Lambda(lambda x: x / 255.0 - 0.5, input_shape=(rows, cols, ch)))
+
     model.add(Convolution2D(32, 3, 3, subsample=(1, 1), border_mode='same'))
     model.add(ELU())
     model.add(MaxPooling2D((2, 2)))
@@ -139,34 +133,50 @@ def the_model():
     model.add(Dense(1, name='Out'))
     return model
 
-def save_parameters(m):
-    json_file = open('model.json', mode='w')
-    json.dump(m.to_json(), json_file)
+def generator(samples, batch_size=32):
+    num_samples = len(samples)
+    while 1: # Loop forever so the generator never terminates
+        random.shuffle(samples)
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
+            images = []
+            angles = []
+            for batch_sample in batch_samples:
+                cameraIndex = random.randint(0, 2)
+                filename = batch_sample[cameraIndex].replace(" ", "")
+                image = cv2.imread(filename)
+                angle = float(batch_sample[3])
+                if cameraIndex == 2: #right
+                    angle -= angle_offset
+                elif cameraIndex == 1: #left
+                    angle += angle_offset
+                image, angle = augment_and_process(image, angle, shape=(cols, rows))
+                images.append(image)
+                angles.append(angle)
 
-# load and remove zero steering data
-log = pd.read_csv('driving_log.csv')
-log = remove_zero_angle(log, 4000)
-log = log.sample(frac=1).reset_index(drop=True)
+            X_train = np.array(images)
+            y_train = np.array(angles)
+            yield sklearn.utils.shuffle(X_train, y_train)
+
+samples = get_samples('./driving_log.csv')
 
 # split training validation set
-training_data = log.loc[0:(log.shape[0]*(1.0-split_size)) - 1]
-validation_data = log.loc[log.shape[0]*(1.0-split_size):]
+train_samples, validation_samples = train_test_split(samples, test_size=test_size)
+print("train_samples ", len(train_samples), "validation_samples ", len(validation_samples))
 
-print("training len ", len(training_data))
-# model and training
+# compile and train the model using the generator function
+train_generator = generator(train_samples, batch_size=batch_size)
+validation_generator = generator(validation_samples, batch_size=batch_size)
+
 model = the_model()
 model.summary()
 model.compile(optimizer=Adam(lr=0.0001), loss='mse')
-checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', verbose=1, save_best_only=True)
-#early_stop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=3, verbose=1)
-callbacks = [checkpoint]
 
-model.fit_generator(batch_generator(training_data),
-                    samples_per_epoch=samples_per_epoch,
-                    nb_epoch=epoch_count,
-                    verbose=1,
-                    validation_data=batch_generator(validation_data),
-                    nb_val_samples=validation_samples,
-                    callbacks=callbacks)
+checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', verbose=1, save_best_only=True)
+early_stop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=3, verbose=1)
+callbacks = [checkpoint, early_stop]
+
+model.fit_generator(train_generator, samples_per_epoch=samples_per_epoch, validation_data=validation_generator,
+                    nb_val_samples=validation_sample_count, nb_epoch=epoch_count, callbacks=callbacks)
 
 save_parameters(model)

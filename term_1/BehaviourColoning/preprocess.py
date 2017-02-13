@@ -42,15 +42,15 @@ def trans_image(image,steer,trans_range):
     tr_y = 10*np.random.uniform()-10/2
     Trans_M = np.float32([[1,0,tr_x],[0,1,tr_y]])
     rows,cols = image.shape[0:2]
-    image_tr = cv2.warpAffine(image,Trans_M,(cols,rows))    
+    image_tr = cv2.warpAffine(image,Trans_M,(cols,rows))
     return tr_x, image_tr,steer_ang
- 
+
 def random_flip(image, angle):
     if np.random.random() > 0.4:
         image = cv2.flip(image, 1)
         angle = angle*(-1.0)
     return image, angle
-       
+
 def process_image(row, shape=(32, 32), angle_offset = 0.27):
     angle = row['steering']
     camera = np.random.choice(['center', 'left', 'right'])
@@ -63,9 +63,9 @@ def process_image(row, shape=(32, 32), angle_offset = 0.27):
     image = read_image(row[camera])
     image, angle = random_V(image, angle)
     image, angle = random_H(image, angle)
-    
+
     image, angle = random_flip(image, angle)
-    #image, angle = trans_image(image, angle, 100)    
+    #image, angle = trans_image(image, angle, 100)
     image = crop_image(image)
     cols, rows = shape
     image = cv2.resize(image, (cols, rows))
@@ -115,13 +115,13 @@ def translate_images(images,angles):
         new_image, new_angle = trans_image(image,angle,100)
         new_images.append(new_image)
         new_angles.append(new_angle)
-    return new_images, new_angles 
+    return new_images, new_angles
 
 if __name__ == '__main__':
     driving_log = pd.read_csv('driving_log.csv')
     image_paths = driving_log['center']
     new_log = remove_zero_angle(driving_log, 4000)
-    
+
     angles = pd.concat([new_log['steering'], driving_log['steering'] + 0.27, driving_log['steering'] - 0.27, -new_log['steering']])
     angles = angles.tolist()
     plt.hist(angles,bins=1000)
@@ -129,12 +129,12 @@ if __name__ == '__main__':
     index = random.randint(0, len(image_paths) - 1)
     image = read_image(image_paths[index])
     image_new, angle = process_image(new_log.iloc[index])
-    
+
     print("angle ", angle)
     tx, image_new, angle_new = trans_image(image, angle, 100)
     print("after ", angle_new, "tx " ,tx)
     plt.figure(figsize=(1,1))
-#plt.imshow(image)
-#    plt.imshow(image_new)
-#    plt.show()
+    plt.imshow(image)
+    plt.imshow(image_new)
+    plt.show()
 

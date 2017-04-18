@@ -1,0 +1,684 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		98CB598B42644D93B4F193CC /* ZERO_CHECK */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 9F441EB0F25945FCBD57202D /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
+			buildPhases = (
+				84C0AC364B624F2F8FC2E4D4 /* CMake Rules */,
+			);
+			dependencies = (
+			);
+			name = ZERO_CHECK;
+			productName = ZERO_CHECK;
+		};
+		BEC2DAF0140D47EA9F6E2C19 /* ALL_BUILD */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 7592AFC80A8542DBB73CD561 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildPhases = (
+				E97ACBADB59D4F5AB5CA2A95 /* CMake Rules */,
+			);
+			dependencies = (
+				B1ABE40E2C904026A7C003D8 /* PBXTargetDependency */,
+				7BBE4AB5DB074A61A3D1B5EC /* PBXTargetDependency */,
+			);
+			name = ALL_BUILD;
+			productName = ALL_BUILD;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		22941B118EF144E5A76D4943 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = A659E39FDACF4BBEBB2C5A73 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */; };
+		2B4882FAAAA24ECD9BA1419B /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/FusionEKF.cpp */ = {isa = PBXBuildFile; fileRef = 0D641166A8584B85AE84C9BF /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/FusionEKF.cpp */; };
+		4B783387E8984348816B5AB4 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/main.cpp */ = {isa = PBXBuildFile; fileRef = 59FCAC3E11A84265AB4B0A8F /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/main.cpp */; };
+		7B7BA5524A3044008200C278 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/kalman_filter.cpp */ = {isa = PBXBuildFile; fileRef = 860D877A28914D678B82B1C6 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/kalman_filter.cpp */; };
+		CFDDD28BB070492A9363FA68 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/tools.cpp */ = {isa = PBXBuildFile; fileRef = 5E250F38F0CC4DA18E1A59BC /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/tools.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXBuildStyle section */
+		2C5D0711C2C64D088425C938 /* Debug */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+		4105D6CAF18F484382A2AE0B = {
+			isa = PBXBuildStyle;
+		};
+		B8B04FBDC01942C694457C9F /* MinSizeRel */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = MinSizeRel;
+		};
+		CC38C8873F134D66A01B7325 /* RelWithDebInfo */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = RelWithDebInfo;
+		};
+		F16FF836CB8A4D56935E5853 /* Release */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Release;
+		};
+/* End PBXBuildStyle section */
+
+/* Begin PBXContainerItemProxy section */
+		3C3607E250BC453E8A2A6C2A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 13D794D48BD742888A22276B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EB4004F309A44174AF4C6052;
+			remoteInfo = ExtendedKF;
+		};
+		7CA9AB98C4D84F109CD2F82C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 13D794D48BD742888A22276B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 98CB598B42644D93B4F193CC;
+			remoteInfo = ZERO_CHECK;
+		};
+		87BCA9D0C9E44A26ACA861A2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 13D794D48BD742888A22276B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 98CB598B42644D93B4F193CC;
+			remoteInfo = ZERO_CHECK;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0D641166A8584B85AE84C9BF /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/FusionEKF.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = FusionEKF.cpp; path = src/FusionEKF.cpp; sourceTree = SOURCE_ROOT; };
+		2B2DB0ACF524457C81A2497D /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		59FCAC3E11A84265AB4B0A8F /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/main.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = main.cpp; path = src/main.cpp; sourceTree = SOURCE_ROOT; };
+		5E250F38F0CC4DA18E1A59BC /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/tools.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = tools.cpp; path = src/tools.cpp; sourceTree = SOURCE_ROOT; };
+		860D877A28914D678B82B1C6 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/kalman_filter.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = kalman_filter.cpp; path = src/kalman_filter.cpp; sourceTree = SOURCE_ROOT; };
+		8E9CC2E05D5D481DBA9EF5E3 /* ExtendedKF */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = ExtendedKF; sourceTree = BUILT_PRODUCTS_DIR; };
+		9348DA48CD364F67A429C6EB /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		A659E39FDACF4BBEBB2C5A73 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		62D87A903F2C4837B318165E /* CMake Rules */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "CMake Rules";
+			sourceTree = "<group>";
+		};
+		74F6B4D6252845538C209AE0 = {
+			isa = PBXGroup;
+			children = (
+				948B6D97309E4994B8E8C49C /* Sources */,
+				E95B0CB05B5C44CAB6978AD8 /* Resources */,
+				9D9BB455FD0140BEBEAE949E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8CAF352926814B2A8DFF529F /* CMake Rules */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "CMake Rules";
+			sourceTree = "<group>";
+		};
+		948B6D97309E4994B8E8C49C /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				F73540A943B24EB9B0D88BB1 /* ExtendedKF */,
+				DCCFF3D822BE4C74B16A1914 /* ALL_BUILD */,
+				EDEE619EF2734D2FAB4D549E /* ZERO_CHECK */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		9D9BB455FD0140BEBEAE949E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8E9CC2E05D5D481DBA9EF5E3 /* ExtendedKF */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DCCFF3D822BE4C74B16A1914 /* ALL_BUILD */ = {
+			isa = PBXGroup;
+			children = (
+				8CAF352926814B2A8DFF529F /* CMake Rules */,
+				2B2DB0ACF524457C81A2497D /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */,
+			);
+			name = ALL_BUILD;
+			sourceTree = "<group>";
+		};
+		E95B0CB05B5C44CAB6978AD8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		EDEE619EF2734D2FAB4D549E /* ZERO_CHECK */ = {
+			isa = PBXGroup;
+			children = (
+				62D87A903F2C4837B318165E /* CMake Rules */,
+				9348DA48CD364F67A429C6EB /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */,
+			);
+			name = ZERO_CHECK;
+			sourceTree = "<group>";
+		};
+		F08DF10D3FCF4235949C8E52 /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				0D641166A8584B85AE84C9BF /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/FusionEKF.cpp */,
+				860D877A28914D678B82B1C6 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/kalman_filter.cpp */,
+				59FCAC3E11A84265AB4B0A8F /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/main.cpp */,
+				5E250F38F0CC4DA18E1A59BC /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/tools.cpp */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		F73540A943B24EB9B0D88BB1 /* ExtendedKF */ = {
+			isa = PBXGroup;
+			children = (
+				F08DF10D3FCF4235949C8E52 /* Source Files */,
+				A659E39FDACF4BBEBB2C5A73 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/CMakeLists.txt */,
+			);
+			name = ExtendedKF;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EB4004F309A44174AF4C6052 /* ExtendedKF */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB9CEB4B1B2F41F4B12EB969 /* Build configuration list for PBXNativeTarget "ExtendedKF" */;
+			buildPhases = (
+				1E4F7A1F91BD4BC29420AD64 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				502A7F5309EF4AAF870B4A30 /* PBXTargetDependency */,
+			);
+			name = ExtendedKF;
+			productName = ExtendedKF;
+			productReference = 8E9CC2E05D5D481DBA9EF5E3 /* ExtendedKF */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		13D794D48BD742888A22276B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 0720;
+			};
+			buildConfigurationList = 4F0758B29A014A308385000F /* Build configuration list for PBXProject "ExtendedKF" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				2C5D0711C2C64D088425C938 /* Debug */,
+				F16FF836CB8A4D56935E5853 /* Release */,
+				B8B04FBDC01942C694457C9F /* MinSizeRel */,
+				CC38C8873F134D66A01B7325 /* RelWithDebInfo */,
+			);
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 0;
+			mainGroup = 74F6B4D6252845538C209AE0;
+			projectDirPath = ../../;
+			projectRoot = "";
+			targets = (
+				BEC2DAF0140D47EA9F6E2C19 /* ALL_BUILD */,
+				EB4004F309A44174AF4C6052 /* ExtendedKF */,
+				98CB598B42644D93B4F193CC /* ZERO_CHECK */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3861AB73B35E4FBDA4DDE382 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here
+exit 0";
+			showEnvVarsInLog = 0;
+		};
+		84C0AC364B624F2F8FC2E4D4 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode -f /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION all";
+			showEnvVarsInLog = 0;
+		};
+		CE92586F31E747A7BB08CF5D = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here
+exit 0";
+			showEnvVarsInLog = 0;
+		};
+		E97ACBADB59D4F5AB5CA2A95 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode -f /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION all";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1E4F7A1F91BD4BC29420AD64 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B4882FAAAA24ECD9BA1419B /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/FusionEKF.cpp */,
+				7B7BA5524A3044008200C278 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/kalman_filter.cpp */,
+				4B783387E8984348816B5AB4 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/main.cpp */,
+				CFDDD28BB070492A9363FA68 /* /Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/src/tools.cpp */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		502A7F5309EF4AAF870B4A30 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 98CB598B42644D93B4F193CC /* ZERO_CHECK */;
+			targetProxy = 87BCA9D0C9E44A26ACA861A2 /* PBXContainerItemProxy */;
+		};
+		7BBE4AB5DB074A61A3D1B5EC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EB4004F309A44174AF4C6052 /* ExtendedKF */;
+			targetProxy = 3C3607E250BC453E8A2A6C2A /* PBXContainerItemProxy */;
+		};
+		B1ABE40E2C904026A7C003D8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 98CB598B42644D93B4F193CC /* ZERO_CHECK */;
+			targetProxy = 7CA9AB98C4D84F109CD2F82C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		017FFBECE80748CC913E3470 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		19CD50C7A701449CB029BB54 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CPLUSPLUSFLAGS = "     -std=c++0x";
+				OTHER_LDFLAGS = " -Wl,-search_paths_first -Wl,-headerpad_max_install_names  ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ExtendedKF;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		530E73955B16415AA91BEB81 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk;
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/build";
+			};
+			name = Release;
+		};
+		6978270EF4A4404FB10D4B4F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG   -std=c++0x";
+				OTHER_LDFLAGS = " -Wl,-search_paths_first -Wl,-headerpad_max_install_names  ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ExtendedKF;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		6E5EA7E24BAE4F208A06CDD5 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk;
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/build";
+			};
+			name = RelWithDebInfo;
+		};
+		B07EDABE13AA4D84B5B5B91C /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG   -std=c++0x";
+				OTHER_LDFLAGS = " -Wl,-search_paths_first -Wl,-headerpad_max_install_names  ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ExtendedKF;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		B9A6495A3D514506BD27CD3A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk;
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/build";
+			};
+			name = Debug;
+		};
+		C033FE98FEC14D09B3392A48 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		C1DDACEA171948209466B0C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		C9A88EF2944847AFB916948E /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		D4D36AA9028642F0A6EF4440 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		DD8AB1C021C4410893AE09E9 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				LIBRARY_SEARCH_PATHS = "";
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG   -std=c++0x";
+				OTHER_LDFLAGS = " -Wl,-search_paths_first -Wl,-headerpad_max_install_names  ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ExtendedKF;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		DDBCA931D23944E4A549224C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		F28DAFE63CD44204827BE8C1 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk;
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode/build";
+			};
+			name = MinSizeRel;
+		};
+		F703578950A6443CAF869C7D /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		FFC5649EDF63419E909CC8F3 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/peterh/self-driving-car-nd/term_2/CarND-Extended-Kalman-Filter/CarND-Extended-Kalman-Filter-Project/ide_profiles/xcode";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4F0758B29A014A308385000F /* Build configuration list for PBXProject "ExtendedKF" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B9A6495A3D514506BD27CD3A /* Debug */,
+				530E73955B16415AA91BEB81 /* Release */,
+				F28DAFE63CD44204827BE8C1 /* MinSizeRel */,
+				6E5EA7E24BAE4F208A06CDD5 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7592AFC80A8542DBB73CD561 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C1DDACEA171948209466B0C1 /* Debug */,
+				C033FE98FEC14D09B3392A48 /* Release */,
+				F703578950A6443CAF869C7D /* MinSizeRel */,
+				C9A88EF2944847AFB916948E /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9F441EB0F25945FCBD57202D /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DDBCA931D23944E4A549224C /* Debug */,
+				D4D36AA9028642F0A6EF4440 /* Release */,
+				FFC5649EDF63419E909CC8F3 /* MinSizeRel */,
+				017FFBECE80748CC913E3470 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BB9CEB4B1B2F41F4B12EB969 /* Build configuration list for PBXNativeTarget "ExtendedKF" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				19CD50C7A701449CB029BB54 /* Debug */,
+				6978270EF4A4404FB10D4B4F /* Release */,
+				B07EDABE13AA4D84B5B5B91C /* MinSizeRel */,
+				DD8AB1C021C4410893AE09E9 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 13D794D48BD742888A22276B /* Project object */;
+}

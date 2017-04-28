@@ -1,0 +1,5 @@
+#!/bin/sh
+[ -d CMake ] || mkdir CMake
+rm -f CMake/CMakeCache.txt
+cd CMake; cmake -G Xcode ../
+

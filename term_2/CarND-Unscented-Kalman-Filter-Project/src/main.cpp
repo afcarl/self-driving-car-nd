@@ -5,7 +5,8 @@
 #include <vector>
 #include <stdlib.h>
 #include "Eigen/Dense"
-#include "ukf.h"
+#include "fushion.h"
+#include "tools.h"
 #include "ground_truth_package.h"
 #include "measurement_package.h"
 
@@ -130,7 +131,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Create a UKF instance
-  UKF ukf;
+  Fushion fushion;
 
   // used to compute the RMSE later
   vector<VectorXd> estimations;
@@ -160,17 +161,17 @@ int main(int argc, char* argv[]) {
 
   for (size_t k = 0; k < number_of_measurements; ++k) {
     // Call the UKF-based fusion
-    ukf.ProcessMeasurement(measurement_pack_list[k]);
+    fushion.ProcessMeasurement(measurement_pack_list[k]);
 
     // timestamp
     out_file_ << measurement_pack_list[k].timestamp_ << "\t"; // pos1 - est
 
     // output the state vector
-    out_file_ << ukf.x_(0) << "\t"; // pos1 - est
-    out_file_ << ukf.x_(1) << "\t"; // pos2 - est
-    out_file_ << ukf.x_(2) << "\t"; // vel_abs -est
-    out_file_ << ukf.x_(3) << "\t"; // yaw_angle -est
-    out_file_ << ukf.x_(4) << "\t"; // yaw_rate -est
+    out_file_ << fushion.ukf_.x_(0) << "\t"; // pos1 - est
+    out_file_ << fushion.ukf_.x_(1) << "\t"; // pos2 - est
+    out_file_ << fushion.ukf_.x_(2) << "\t"; // vel_abs -est
+    out_file_ << fushion.ukf_.x_(3) << "\t"; // yaw_angle -est
+    out_file_ << fushion.ukf_.x_(4) << "\t"; // yaw_rate -est
 
     // output lidar and radar specific data
     if (measurement_pack_list[k].sensor_type_ == MeasurementPackage::LASER) {
@@ -178,7 +179,7 @@ int main(int argc, char* argv[]) {
       out_file_ << "lidar" << "\t";
 
       // NIS value
-      out_file_ << ukf.NIS_laser_ << "\t";
+      out_file_ << fushion.nis_lidar_ << "\t";
 
       // output the lidar sensor measurement px and py
       out_file_ << measurement_pack_list[k].raw_measurements_(0) << "\t";
@@ -189,7 +190,7 @@ int main(int argc, char* argv[]) {
       out_file_ << "radar" << "\t";
 
       // NIS value
-      out_file_ << ukf.NIS_radar_ << "\t";
+      out_file_ << fushion.nis_radar_ << "\t";
 
       // output radar measurement in cartesian coordinates
       float ro = measurement_pack_list[k].raw_measurements_(0);
@@ -207,21 +208,19 @@ int main(int argc, char* argv[]) {
     // convert ukf x vector to cartesian to compare to ground truth
     VectorXd ukf_x_cartesian_ = VectorXd(4);
 
-    float x_estimate_ = ukf.x_(0);
-    float y_estimate_ = ukf.x_(1);
-    float vx_estimate_ = ukf.x_(2) * cos(ukf.x_(3));
-    float vy_estimate_ = ukf.x_(2) * sin(ukf.x_(3));
+    float x_estimate_ = fushion.ukf_.x_(0);
+    float y_estimate_ = fushion.ukf_.x_(1);
+    float vx_estimate_ = fushion.ukf_.x_(2) * cos(fushion.ukf_.x_(3));
+    float vy_estimate_ = fushion.ukf_.x_(2) * sin(fushion.ukf_.x_(3));
     
     ukf_x_cartesian_ << x_estimate_, y_estimate_, vx_estimate_, vy_estimate_;
     
     estimations.push_back(ukf_x_cartesian_);
     ground_truth.push_back(gt_pack_list[k].gt_values_);
-
   }
 
   // compute the accuracy (RMSE)
-  Tools tools;
-  cout << "RMSE" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+  cout << "RMSE" << endl << Tools::CalculateRMSE(estimations, ground_truth) << endl;
 
   // close files
   if (out_file_.is_open()) {

@@ -3,23 +3,12 @@
 #include <vector>
 #include "Eigen/Dense"
 
-class Tools {
-public:
-  /**
-  * Constructor.
-  */
-  Tools();
+using namespace Eigen;
 
-  /**
-  * Destructor.
-  */
-  virtual ~Tools();
-
-  /**
-  * A helper method to calculate RMSE.
-  */
-  Eigen::VectorXd CalculateRMSE(const std::vector<Eigen::VectorXd> &estimations, const std::vector<Eigen::VectorXd> &ground_truth);
-
+namespace Tools
+{
+	VectorXd CalculateRMSE(const std::vector<VectorXd> &estimations, const std::vector<VectorXd> &ground_truth);
+	MatrixXd GenerateSigmaPoints(const VectorXd& X, const MatrixXd& P, const MatrixXd& Q, double lambda);
 };
 
 #endif /* TOOLS_H_ */

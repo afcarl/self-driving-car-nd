@@ -12,9 +12,11 @@ UKF::UKF(int n_x, int n_aug, Residual_Func residual_x, Residual_Func residual_z,
 	nis_(0)
 {
 	x_ = VectorXd::Zero(n_x_);
-	P_ = MatrixXd::Identity(n_x_, n_x_);
-	Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 	
+	P_ = MatrixXd::Identity(n_x_, n_x_);
+	
+	Xsig_pred_ = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
+
 	weights_ = VectorXd(2 *  n_aug_ + 1);
 	weights_(0) = lambda_/(lambda_+n_aug_);
 	for (int i=1; i < 2 * n_aug_ + 1; i++)
@@ -47,7 +49,7 @@ void UKF::prediction(double delta_t)
 {
 	//create sigma point matrix
 	MatrixXd Xsig_aug = Tools::GenerateSigmaPoints(x_, P_, Q_, lambda_);
-	
+
 	//predict sigma point matrix
 	for (int i = 0; i < Xsig_aug.cols(); i++)
 		Xsig_pred_.col(i) = Fx_(Xsig_aug.col(i), delta_t);
@@ -59,7 +61,6 @@ void UKF::update(VectorXd z, const MatrixXd& R, Hx_func Hx)
 {
 	//create matrix for sigma points in measurement space
 	MatrixXd Zsig = MatrixXd(z.size(), 2 * n_aug_ + 1);
-
 	for (int i = 0; i < 2 * n_aug_ + 1; i ++)
 		Zsig.col(i) = Hx(Xsig_pred_.col(i));
 	
@@ -67,9 +68,9 @@ void UKF::update(VectorXd z, const MatrixXd& R, Hx_func Hx)
 	VectorXd z_pred;
 	std::tie(z_pred, S) = unscented_transform(weights_, Zsig, residual_z_func_);
 	S = S + R;
-	
+
 	MatrixXd Tc = cross_variance(x_, z_pred, Xsig_pred_, Zsig);
-	
+
 	//Kalman gain K
 	MatrixXd K = Tc * S.inverse();
 	
@@ -82,6 +83,10 @@ void UKF::update(VectorXd z, const MatrixXd& R, Hx_func Hx)
 	
 	//calculate nis
 	nis_ = (z - z_pred).transpose() * S.inverse() * (z - z_pred);
+	std::cout << "x " << std::endl;
+	std::cout << x_ << std::endl;
+	std::cout << "P " << std::endl;
+	std::cout << P_ << std::endl;
 }
 
 MatrixXd UKF::cross_variance(const VectorXd& x, const VectorXd& z_pred, const MatrixXd& sigmas_x, const MatrixXd& sigmas_z)
@@ -99,4 +104,6 @@ MatrixXd UKF::cross_variance(const VectorXd& x, const VectorXd& z_pred, const Ma
 	}
 	return Tc;
 }
+
+
 

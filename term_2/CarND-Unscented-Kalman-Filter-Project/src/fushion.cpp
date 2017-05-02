@@ -1,22 +1,23 @@
 #include "fushion.h"
 #include "ctrv.h"
+#include <iostream>
 
 Fushion::Fushion():
 	is_initialized_(false),
-	use_laser_(true),
+	use_laser_(false),
 	use_radar_(true),
 	previous_timestamp_(0)
 {
 	using namespace std::placeholders;
 	ukf_ = UKF(5, 7, std::bind(ctrv::residual_x, _1, _2),
 					 std::bind(ctrv::residual_z, _1, _2),
-			         std::bind(ctrv::Fx, _1, _2));
+					 std::bind(ctrv::Fx, _1, _2));
 	
 	// Process noise standard deviation longitudinal acceleration in m/s^2
 	const double std_a = 0.2; //was 30
 	
 	// Process noise standard deviation yaw acceleration in rad/s^2
-	const double std_yawdd = 0.2; //was 30
+	const double std_yawdd = 0.4; //was 30
 	
 	// process noise
 	ukf_.Q_ = MatrixXd(2, 2);
@@ -37,7 +38,7 @@ void Fushion::ProcessMeasurement(MeasurementPackage measurement)
 		}
 		else if (measurement.sensor_type_ == MeasurementPackage::LASER)
 		{
-			ukf_.x_ << measurement.raw_measurements_[0], measurement.raw_measurements_[1], 0, 0;
+			ukf_.x_ << measurement.raw_measurements_[0], measurement.raw_measurements_[1], 0, 0, 0;
 		}
 		
 		previous_timestamp_ = measurement.timestamp_;

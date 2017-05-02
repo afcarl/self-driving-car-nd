@@ -29,7 +29,13 @@ VectorXd radar::hx(const VectorXd& x)
 	const float yaw = x[3];
 	const float rho = sqrt(px*px + py*py);
 	const float phi = atan2(py, px);
-	const float rho_dot = (px*cos(yaw)*v + py*sin(yaw)*v) / rho;
+	float rho_dot;
+	if (rho > 0.001)
+	{
+	 	rho_dot = (px*cos(yaw)*v + py*sin(yaw)*v) / rho;
+	}
+	else
+		rho_dot = 0.0;
 	hx << rho, phi, rho_dot;
 	return hx;
 }

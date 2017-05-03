@@ -1,4 +1,5 @@
 #include "tools.h"
+#include <iostream>
 
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
@@ -30,12 +31,11 @@ MatrixXd Tools::GenerateSigmaPoints(const VectorXd& X, const MatrixXd& P, const 
 	MatrixXd Xsig_out = MatrixXd(n_aug, 2 * n_aug + 1);
 	
 	//create augmented mean vector
-	VectorXd x_aug = VectorXd(n_aug);
-	x_aug.fill(0.0);
+	VectorXd x_aug = VectorXd::Zero(n_aug);
 	x_aug.head(n_x) = X;
 	
 	//create augmented state covariance
-	MatrixXd P_aug = MatrixXd(n_aug, n_aug);
+	MatrixXd P_aug = MatrixXd::Zero(n_aug, n_aug);
 	
 	//create augmented covariance matrix
 	P_aug.topLeftCorner(n_x, n_x) = P;

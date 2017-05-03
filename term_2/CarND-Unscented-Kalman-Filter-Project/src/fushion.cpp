@@ -4,25 +4,28 @@
 
 Fushion::Fushion():
 	is_initialized_(false),
-	use_laser_(false),
+	use_laser_(true),
 	use_radar_(true),
 	previous_timestamp_(0)
 {
+	const int k_n_x = 5;
+	const int k_n_aug = 7;
 	using namespace std::placeholders;
-	ukf_ = UKF(5, 7, std::bind(ctrv::residual_x, _1, _2),
-					 std::bind(ctrv::residual_z, _1, _2),
-					 std::bind(ctrv::Fx, _1, _2));
+	ukf_ = UKF(k_n_x, k_n_aug, std::bind(ctrv::residual_x, _1, _2),
+							   std::bind(ctrv::residual_z, _1, _2),
+							   std::bind(ctrv::Fx, _1, _2));
 	
 	// Process noise standard deviation longitudinal acceleration in m/s^2
-	const double std_a = 0.2; //was 30
+	const double std_a = 1;
 	
 	// Process noise standard deviation yaw acceleration in rad/s^2
-	const double std_yawdd = 0.4; //was 30
+	const double std_yawdd = 0.4;
 	
 	// process noise
 	ukf_.Q_ = MatrixXd(2, 2);
 	ukf_.Q_ << std_a * std_a, 0,
 			   0, std_yawdd * std_yawdd;
+	
 }
 
 void Fushion::ProcessMeasurement(MeasurementPackage measurement)
@@ -49,7 +52,7 @@ void Fushion::ProcessMeasurement(MeasurementPackage measurement)
 	//Compute the time elapsed between the current and previous measurements
 	float dt = (measurement.timestamp_ - previous_timestamp_) / 1000000.0; //in seconds
 	previous_timestamp_ = measurement.timestamp_;
-	
+
 	//Prediction
 	ukf_.prediction(dt);
 	

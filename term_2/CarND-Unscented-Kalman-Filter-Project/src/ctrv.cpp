@@ -3,10 +3,11 @@
 
 double ctrv::normalise_angle(double angle)
 {
+	return atan2(sin(angle), cos(angle));
+// could use the following as well
 //	while (angle > M_PI) angle -= 2.*M_PI;
 //	while (angle < -M_PI) angle += 2.*M_PI;
 //	return angle;
-	return atan2(sin(angle), cos(angle));
 }
 
 VectorXd ctrv::residual_x(const VectorXd& x_sig, const VectorXd& x)
@@ -26,7 +27,6 @@ VectorXd ctrv::residual_z(const VectorXd& z_sig, const VectorXd& z)
 VectorXd ctrv::Fx(const VectorXd& x, double dt)
 {
 	VectorXd Xsig_pred(5);
-//	std::cout << "predit in" << x << std::endl;
 
 	const double p_x = x(0);
 	const double p_y = x(1);
@@ -63,6 +63,5 @@ VectorXd ctrv::Fx(const VectorXd& x, double dt)
 	
 	//write predicted sigma point into right column
 	Xsig_pred << px_p, py_p, v_p, yaw_p, yawd_p;
-//	std::cout << "predit out" << Xsig_pred << std::endl;
 	return Xsig_pred;
 }

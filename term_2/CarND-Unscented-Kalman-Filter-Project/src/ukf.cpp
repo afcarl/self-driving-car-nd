@@ -12,9 +12,7 @@ UKF::UKF(int n_x, int n_aug, Residual_Func residual_x, Residual_Func residual_z,
 	nis_(0)
 {
 	x_ = VectorXd::Zero(n_x_);
-	
 	P_ = MatrixXd::Identity(n_x_, n_x_);
-	
 	Xsig_pred_ = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
 
 	weights_ = VectorXd(2 *  n_aug_ + 1);
@@ -23,20 +21,14 @@ UKF::UKF(int n_x, int n_aug, Residual_Func residual_x, Residual_Func residual_z,
 		weights_(i) = 0.5 / (lambda_ + n_aug_);
 }
 
-UKF::~UKF()
-{
-}
-
 static std::tuple<VectorXd, MatrixXd> unscented_transform(const MatrixXd& weights, const MatrixXd& sig_points, Residual_Func& residual_func)
 {
 	const int n_x = sig_points.rows();
-	VectorXd x(n_x);
-	x.fill(0.0);
+	VectorXd x = VectorXd::Zero(n_x);
 	for (int i = 0; i < sig_points.cols(); i++)
 		x = x + weights(i) * sig_points.col(i);
 	
-	MatrixXd P = MatrixXd(n_x, n_x);
-	P.fill(0.0);
+	MatrixXd P = MatrixXd::Zero(n_x, n_x);
 	for (int i = 0; i < sig_points.cols(); i++)
 	{
 		VectorXd x_diff = residual_func(sig_points.col(i), x);
@@ -83,17 +75,12 @@ void UKF::update(VectorXd z, const MatrixXd& R, Hx_func Hx)
 	
 	//calculate nis
 	nis_ = (z - z_pred).transpose() * S.inverse() * (z - z_pred);
-	std::cout << "x " << std::endl;
-	std::cout << x_ << std::endl;
-	std::cout << "P " << std::endl;
-	std::cout << P_ << std::endl;
 }
 
 MatrixXd UKF::cross_variance(const VectorXd& x, const VectorXd& z_pred, const MatrixXd& sigmas_x, const MatrixXd& sigmas_z)
 {
 	//create matrix for cross correlation Tc
-	MatrixXd Tc = MatrixXd(x.size(), z_pred.size());
-	Tc.fill(0.0);
+	MatrixXd Tc = MatrixXd::Zero(x.size(), z_pred.size());
 	
 	//calculate cross correlation matrix
 	for (int i = 0; i < sigmas_x.cols(); i++)

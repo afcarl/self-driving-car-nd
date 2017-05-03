@@ -217,6 +217,11 @@ int main(int argc, char* argv[]) {
     
     estimations.push_back(ukf_x_cartesian_);
     ground_truth.push_back(gt_pack_list[k].gt_values_);
+	  
+	std::cout << "x " << std::endl;
+	std::cout << fushion.ukf_.x_ << std::endl;
+	std::cout << "P " << std::endl;
+	std::cout << fushion.ukf_.P_ << std::endl;
   }
 
   // compute the accuracy (RMSE)

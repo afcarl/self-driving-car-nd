@@ -13,8 +13,8 @@ set(sources
    src/ctrv.cpp
    src/ukf.h
    src/ukf.cpp
-   src/fushion.h
-   src/fushion.cpp
+   src/fusion.h
+   src/fusion.cpp
    src/main.cpp
    src/tools.cpp)
 

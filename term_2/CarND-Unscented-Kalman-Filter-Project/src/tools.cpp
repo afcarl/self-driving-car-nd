@@ -9,10 +9,10 @@ VectorXd Tools::CalculateRMSE(const std::vector<VectorXd> &estimations,
 {
 	assert((estimations.size() == ground_truth.size()) || estimations.size() != 0);
 	
-	VectorXd rmse(4);
-	rmse << 0,0,0,0;
+	VectorXd rmse = VectorXd::Zero(4);
 	
-	for(int i=0; i < estimations.size(); ++i){
+	for(int i = 0; i < estimations.size(); ++i)
+	{
 		VectorXd error = estimations[i] - ground_truth[i];
 		error = error.array() * error.array();
 		rmse += error;
@@ -27,8 +27,9 @@ VectorXd Tools::CalculateRMSE(const std::vector<VectorXd> &estimations,
 MatrixXd Tools::GenerateSigmaPoints(const VectorXd& X, const MatrixXd& P, const MatrixXd& Q, double lambda)
 {
 	const int n_aug = P.rows() + Q.rows();
+	const int n_sig = 2 * n_aug + 1;
 	const int n_x = X.size();
-	MatrixXd Xsig_out = MatrixXd(n_aug, 2 * n_aug + 1);
+	MatrixXd Xsig_out = MatrixXd(n_aug, n_sig);
 	
 	//create augmented mean vector
 	VectorXd x_aug = VectorXd::Zero(n_aug);

@@ -5,6 +5,7 @@
 UKF::UKF(int n_x, int n_aug, Residual_Func residual_x, Residual_Func residual_z, Fx_Func Fx):
 	n_x_(n_x),
 	n_aug_(n_aug),
+	n_sig_(2 * n_aug + 1),
 	lambda_(3 - n_aug_),
 	residual_x_func_(residual_x),
 	residual_z_func_(residual_z),
@@ -13,22 +14,21 @@ UKF::UKF(int n_x, int n_aug, Residual_Func residual_x, Residual_Func residual_z,
 {
 	x_ = VectorXd::Zero(n_x_);
 	P_ = MatrixXd::Identity(n_x_, n_x_);
-	Xsig_pred_ = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
+	Xsig_pred_ = MatrixXd::Zero(n_x_, n_sig_);
 
-	weights_ = VectorXd(2 *  n_aug_ + 1);
-	weights_(0) = lambda_/(lambda_+n_aug_);
-	for (int i=1; i < 2 * n_aug_ + 1; i++)
-		weights_(i) = 0.5 / (lambda_ + n_aug_);
+	weights_ = VectorXd(n_sig_);
+	weights_.fill(0.5 / (lambda_ + n_aug_));
+	weights_(0) = lambda_/(lambda_ + n_aug_);
 }
 
 static std::tuple<VectorXd, MatrixXd> unscented_transform(const MatrixXd& weights, const MatrixXd& sig_points, Residual_Func& residual_func)
 {
 	const int n_x = sig_points.rows();
-	VectorXd x = VectorXd::Zero(n_x);
-	for (int i = 0; i < sig_points.cols(); i++)
-		x = x + weights(i) * sig_points.col(i);
+	VectorXd x = sig_points * weights;
 	
 	MatrixXd P = MatrixXd::Zero(n_x, n_x);
+	
+	//can be vectorized
 	for (int i = 0; i < sig_points.cols(); i++)
 	{
 		VectorXd x_diff = residual_func(sig_points.col(i), x);
@@ -52,8 +52,8 @@ void UKF::prediction(double delta_t)
 void UKF::update(VectorXd z, const MatrixXd& R, Hx_func Hx)
 {
 	//create matrix for sigma points in measurement space
-	MatrixXd Zsig = MatrixXd(z.size(), 2 * n_aug_ + 1);
-	for (int i = 0; i < 2 * n_aug_ + 1; i ++)
+	MatrixXd Zsig = MatrixXd(z.size(), n_sig_);
+	for (int i = 0; i < n_sig_; i ++)
 		Zsig.col(i) = Hx(Xsig_pred_.col(i));
 	
 	MatrixXd S;

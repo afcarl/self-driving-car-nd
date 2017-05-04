@@ -1,8 +1,8 @@
-#include "fushion.h"
+#include "Fusion.h"
 #include "ctrv.h"
 #include <iostream>
 
-Fushion::Fushion():
+Fusion::Fusion():
 	is_initialized_(false),
 	use_laser_(true),
 	use_radar_(true),
@@ -25,10 +25,9 @@ Fushion::Fushion():
 	ukf_.Q_ = MatrixXd(2, 2);
 	ukf_.Q_ << std_a * std_a, 0,
 			   0, std_yawdd * std_yawdd;
-	
 }
 
-void Fushion::ProcessMeasurement(MeasurementPackage measurement)
+void Fusion::ProcessMeasurement(MeasurementPackage measurement)
 {
 	//Initilisation
 	if (!is_initialized_)

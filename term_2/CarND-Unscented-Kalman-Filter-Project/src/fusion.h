@@ -5,10 +5,10 @@
 #include "lidar.h"
 #include "measurement_package.h"
 
-class Fushion
+class Fusion
 {
 public:
-	Fushion();
+	Fusion();
 	void ProcessMeasurement(MeasurementPackage meas_package);
 	
 	UKF ukf_;

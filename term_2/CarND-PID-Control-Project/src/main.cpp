@@ -31,12 +31,19 @@ std::string hasData(std::string s) {
 int main()
 {
   uWS::Hub h;
-//	PID pid_steering({0.0833, 0.000177, 0.000433, kdt, -0.3, 0.3});
 
   const double kdt = 0.012; // control frequency is measured around 82Hz
-	
+#ifdef __APPLE__
   PID pid_steering({0.13, 0.1, 0.1, kdt, -0.3, 0.3});
   PID pid_speed({1.13, 0.57, 0, kdt, -1.0, 1.0});
+  const int kTargetSpeed = 50;
+  const int kBrakeSpeed = 40;
+#elif __linux__
+  PID pid_steering({0.051, 0.13, 0.017, kdt, -0.8, 0.8});
+  PID pid_speed({0.13, 0.27, 0, kdt, -1.0, 1.0});
+  const int kTargetSpeed = 30;
+  const int kBrakeSpeed = 25;
+#endif
 
   h.onMessage([&pid_steering, &pid_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -59,22 +66,22 @@ int main()
 		  bound<double>(steer_value, -1.0, 1.0);
 			
 		  // reduce speed if error is too large, never happen with full speed though
-		  double targetSpeed = 100;
-		  if (std::abs(cte) > 1.8)
-			  targetSpeed = 50;
+		  double targetSpeed = kTargetSpeed;
+          if (std::abs(cte) > 1.8)
+		  	  targetSpeed = kBrakeSpeed;
 			
 		  double speed_error = targetSpeed - speed;
 		  double throttle = pid_speed.compute(speed_error);
-		  bound<double>(throttle, 0, 1.0); //max speed is 50mph
+		  bound<double>(throttle, 0, 1.0); //max speed is 50mph on mac, 100mph on linux
 			
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << "speed " << speed << std::endl;
+          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << "speed " << speed << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       }

@@ -72,8 +72,10 @@ void worldToBody(double px, double py, double psi, const vector<double>& ptsx, c
 	
 	for (size_t i = 0; i < ptsx.size(); i++)
 	{
-		ptsx_b[i] = ptsx[i] * cos(psi) + ptsy[i] * sin(psi) - px;
-		ptsy_b[i] = -ptsx[i] * sin(psi) + ptsy[i] * cos(psi) - py;
+		ptsx_b[i] = (ptsx[i] - px) * cos(psi) + (ptsy[i] - py) * sin(psi);
+		ptsy_b[i] = -(ptsx[i] -px) * sin(psi) + (ptsy[i] - py) * cos(psi);
+        //ptsx_b[i] = ptsx[i] * cos(psi) + ptsy[i] * sin(psi) - px;
+        //ptsy_b[i] = -ptsx[i] * sin(psi) + ptsy[i] * cos(psi) - py;
 	}
 }
 
@@ -89,7 +91,7 @@ int main() {
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     string sdata = string(data).substr(0, length);
-    cout << sdata << endl;
+    //cout << sdata << endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
@@ -104,20 +106,20 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 			
-		  cout << "size " << ptsx.size() << ptsy.size() << endl;
 		  Eigen::VectorXd ptsx_b(ptsx.size()), ptsy_b(ptsy.size());
 		  worldToBody(px, py, psi, ptsx, ptsy, ptsx_b, ptsy_b);
 			
           auto coeffs = polyfit(ptsx_b, ptsy_b, 3);
-          double cte = polyeval(coeffs, px) - py;
-          double epsi = psi - atan(coeffs[1]);
+
+          double cte = polyeval(coeffs, 0) - 0;
+          double epsi = 0 - atan(coeffs[1]);
           
           Eigen::VectorXd state(6);
-          state << px, py, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
 
           const MPC::Solution solution = mpc.Solve(state, coeffs);
 
-          double steer_value = solution.delta / deg2rad(25);
+          double steer_value = -solution.delta / deg2rad(25);
           double throttle_value = solution.a;
           
           json msgJson;
@@ -144,20 +146,27 @@ int main() {
 			 next_x_vals.push_back(ptsx_b[i]);
 			 next_y_vals.push_back(ptsy_b[i]);
 		  }
-			cout << "ptsx_b: " << endl;
-
-		  for (size_t i = 0; i < ptsx_b.size(); i++)
+		  cout << "ptsx: " << endl;
+		  for (size_t i = 0; i < ptsx.size(); i++)
 		  {
-			  cout << ptsx_b[i] << " ";
+			  cout << ptsy[i] << " ";
 		  }
 			cout << endl;
+          cout << "ptsx_b: " << endl;
+		  for (size_t i = 0; i < ptsx_b.size(); i++)
+		  {
+			  cout << ptsy_b[i] << " ";
+		  }
+			cout << endl;
+
+
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.

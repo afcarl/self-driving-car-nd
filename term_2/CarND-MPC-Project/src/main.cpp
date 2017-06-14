@@ -72,10 +72,10 @@ void worldToBody(double px, double py, double psi, const vector<double>& ptsx, c
 	
 	for (size_t i = 0; i < ptsx.size(); i++)
 	{
-		ptsx_b[i] = (ptsx[i] - px) * cos(psi) + (ptsy[i] - py) * sin(psi);
-		ptsy_b[i] = -(ptsx[i] -px) * sin(psi) + (ptsy[i] - py) * cos(psi);
-        //ptsx_b[i] = ptsx[i] * cos(psi) + ptsy[i] * sin(psi) - px;
-        //ptsy_b[i] = -ptsx[i] * sin(psi) + ptsy[i] * cos(psi) - py;
+        const double px_b = ptsx[i] - px;
+        const double py_b = ptsy[i] - py; 
+		ptsx_b[i] = px_b * cos(psi) + py_b * sin(psi);
+		ptsy_b[i] = -px_b * sin(psi) + py_b * cos(psi);
 	}
 }
 
@@ -110,7 +110,7 @@ int main() {
 		  worldToBody(px, py, psi, ptsx, ptsy, ptsx_b, ptsy_b);
 			
           auto coeffs = polyfit(ptsx_b, ptsy_b, 3);
-
+          // in body frame current position always at its origin
           double cte = polyeval(coeffs, 0) - 0;
           double epsi = 0 - atan(coeffs[1]);
           

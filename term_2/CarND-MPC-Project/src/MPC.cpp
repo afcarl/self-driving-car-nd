@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 const size_t N = 25;
-const double dt = 0.05;
+const double dt = 0.04;
 const double ref_v = 40;
 // This value assumes the model presented in the classroom is used.
 //
@@ -51,13 +51,13 @@ class FG_eval {
 
     // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++) {
-      fg[0] += CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 200*CppAD::pow(vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N - 2; i++) {
-      fg[0] += 500*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 600*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
@@ -229,8 +229,8 @@ MPC::Solution MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	  solution_.cte.push_back(solution.x[cte_start + 1 + i]);
 	  solution_.epsi.push_back(solution.x[epsi_start + 1 + i]);
   }
-  solution_.delta = solution.x[delta_start];
-  solution_.a = solution.x[a_start];
+  solution_.delta = solution.x[delta_start+2];
+  solution_.a = solution.x[a_start+2];
 
   return solution_;
 }

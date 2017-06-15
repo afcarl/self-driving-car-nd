@@ -5,9 +5,12 @@
 
 using CppAD::AD;
 
-const size_t N = 15;
+const size_t N = 20;
 const double dt = 0.04;
-const double ref_v = 60;
+const double kMaxSpeed = 80;
+const double kMiniSpeed = 60;
+double ref_v = kMaxSpeed;
+
 // This value assumes the model presented in the classroom is used.
 //
 // It was obtained by measuring the radius formed by running the vehicle in the
@@ -51,14 +54,14 @@ class FG_eval {
 
     // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++) {
-      fg[0] += 200*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 100*CppAD::pow(vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N - 2; i++) {
-      fg[0] += 600*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-      fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      fg[0] += 800*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 100*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
     // Setup Constraints f[0] is cost
@@ -217,7 +220,7 @@ MPC::Solution MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // Cost
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
-
+  
   // return solution for debugging and line drawing
   MPC::Solution solution_;
   for (int i = 0; i < N - 1; i++)
@@ -230,8 +233,25 @@ MPC::Solution MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	  solution_.epsi.push_back(solution.x[epsi_start + 1 + i]);
   }
   solution_.delta = solution.x[delta_start+2];
-  solution_.a = solution.x[a_start+2];
+  double delta = solution_.delta / 0.4361;
 
+  static int count = 0;
+  static bool brake = false;
+  
+  if (fabs(delta) > 0.07)
+      brake = true;
+  
+  if (brake)
+  {
+      ref_v = kMiniSpeed;
+      if (count ++ > 2*N)
+      {
+          count = 0;
+          brake = false;
+          ref_v = kMaxSpeed;
+      }
+  }  
+  solution_.a = solution.x[a_start+2];
   return solution_;
 }
 

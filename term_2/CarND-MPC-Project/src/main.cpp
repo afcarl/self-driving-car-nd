@@ -121,7 +121,7 @@ int main() {
 
           double steer_value = -solution.delta / deg2rad(25);
           double throttle_value = solution.a;
-          
+          cout << "a: " << throttle_value << endl; 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
@@ -146,20 +146,7 @@ int main() {
 			 next_x_vals.push_back(ptsx_b[i]);
 			 next_y_vals.push_back(ptsy_b[i]);
 		  }
-		  cout << "ptsx: " << endl;
-		  for (size_t i = 0; i < ptsx.size(); i++)
-		  {
-			  cout << ptsy[i] << " ";
-		  }
-			cout << endl;
-          cout << "ptsx_b: " << endl;
-		  for (size_t i = 0; i < ptsx_b.size(); i++)
-		  {
-			  cout << ptsy_b[i] << " ";
-		  }
-			cout << endl;
-
-
+		
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
           msgJson["next_x"] = next_x_vals;

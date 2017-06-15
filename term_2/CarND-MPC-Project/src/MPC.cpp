@@ -5,9 +5,9 @@
 
 using CppAD::AD;
 
-const size_t N = 25;
+const size_t N = 15;
 const double dt = 0.04;
-const double ref_v = 40;
+const double ref_v = 60;
 // This value assumes the model presented in the classroom is used.
 //
 // It was obtained by measuring the radius formed by running the vehicle in the

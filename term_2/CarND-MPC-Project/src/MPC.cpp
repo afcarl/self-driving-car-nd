@@ -5,7 +5,13 @@
 
 using CppAD::AD;
 
-const size_t N = 20;
+// N and dt tuning
+// 1. Since in realdriving T should be a few second, so I choose T to be <= 1 second to start with
+// 2. T = N*dt, too large N increase computation time, so I first use N=20, dt = 0.05
+// 3. Decreasing N to less than 15 will not predicting enough actuations in the future, it is ok when the car drives slowly, but at higher speed we want to look ahead a bit more. so N settles at 15 allow optimizer compute a path leading us to a decent future with lowest cost. 
+// 4. larger dt result in less frequent actuations, causing discretization error, i.e it won't give us a nice curve when turning.
+
+const size_t N = 15;
 const double dt = 0.04;
 const double kMaxSpeed = 80;
 const double kMiniSpeed = 60;
@@ -54,14 +60,14 @@ class FG_eval {
 
     // Minimize the use of actuators.
     for (int i = 0; i < N - 1; i++) {
-      fg[0] += 100*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 200*CppAD::pow(vars[delta_start + i], 2);
       fg[0] += CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int i = 0; i < N - 2; i++) {
-      fg[0] += 800*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-      fg[0] += 100*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      fg[0] += 700*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
     // Setup Constraints f[0] is cost
@@ -232,26 +238,32 @@ MPC::Solution MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 	  solution_.cte.push_back(solution.x[cte_start + 1 + i]);
 	  solution_.epsi.push_back(solution.x[epsi_start + 1 + i]);
   }
-  solution_.delta = solution.x[delta_start+2];
-  double delta = solution_.delta / 0.4361;
 
+  // since steering actuator has 100ms delay, thus the current actuation needs to be at least 100ms ahead.
+  // dt = 0.04, which is 40ms so we need at least 3 steps ahead, 3*40=120ms, so delay_index = 3-1 = 2.
+  const int delay_index = 2;
+  solution_.delta = solution.x[delta_start+delay_index];
+  solution_.a = solution.x[a_start+delay_index];
+  
   static int count = 0;
   static bool brake = false;
-  
-  if (fabs(delta) > 0.07)
+  const double angle_threshold = 0.07;
+  const double delta = solution_.delta / 0.4361; //normalise by deg2rad(25)
+ 
+  // reference speed regulation, when turning we want lower speed. Once brake, we keep lower speed for 1.5*N*100ms for 2.2second
+  if (fabs(delta) > angle_threshold)
       brake = true;
   
   if (brake)
   {
       ref_v = kMiniSpeed;
-      if (count ++ > 2*N)
+      if (count ++ > 1.5*N)
       {
           count = 0;
           brake = false;
           ref_v = kMaxSpeed;
       }
   }  
-  solution_.a = solution.x[a_start+2];
   return solution_;
 }
 

@@ -9,7 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "spline.h"
-#include "matplotlibcpp.h"
+//#include "matplotlibcpp.h"
 
 using namespace std;
 
@@ -198,10 +198,10 @@ int main() {
   	map_waypoints_dx.push_back(d_x);
   	map_waypoints_dy.push_back(d_y);
   }
-	
-  namespace plt = matplotlibcpp;
-  plt::plot(map_waypoints_x, map_waypoints_y);
-  plt::show();
+  printf("here?");
+  //namespace plt = matplotlibcpp;
+  //plt::plot(map_waypoints_x, map_waypoints_y);
+  //plt::show();
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -247,11 +247,16 @@ int main() {
 			double pos_y;
 
 			tk::spline s;
-			vector<double> new_mapx(map_waypoints_x.begin(), map_waypoints_x.begin()+50);
-			vector<double> new_mapy(map_waypoints_y.begin(), map_waypoints_y.begin()+50);
+            printf("here?"); 
+			vector<double> new_mapx, new_mapy;
+			for(int i = 0; i < 50; i++)
+            {
+                new_mapx.push_back(map_waypoints_x[i] + 6 * map_waypoints_dx[i]);
+                new_mapy.push_back(map_waypoints_y[i] + 6 * map_waypoints_dy[i]);
+            }
 
 			s.set_points(new_mapx, new_mapy);
-			
+
 			int path_size = previous_path_x.size();
 			
 			if(path_size == 0)
@@ -273,12 +278,6 @@ int main() {
 				next_y_vals.push_back(s(pos_x + i * 0.01));
 //				cout << map_waypoints_x[i] << " " << map_waypoints_y[i] << endl;
 			}        
-			
-//			for(int i = 0; i < previous_path_x.size(); i++)
-//			{
-//				cout << previous_path_x[i] << " " << previous_path_y[i                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ] << endl;
-//			}
-
 //
  
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds

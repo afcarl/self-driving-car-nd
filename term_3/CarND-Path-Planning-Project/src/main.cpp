@@ -9,7 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include "spline.h"
-//#include "matplotlibcpp.h"
+#include "matplotlibcpp.h"
 
 using namespace std;
 
@@ -162,17 +162,26 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
-void worldToBody(double px, double py, double psi, const vector<double>& ptsx, const vector<double>& ptsy, vector<double>& ptsx_b, vector<double>& ptsy_b)
+struct Point
 {
-	assert((ptsx.size() == ptsy.size()) && (ptsx_b.size() == ptsy_b.size()) && (ptsx.size() == ptsx_b.size()));
-	
-	for (size_t i = 0; i < ptsx.size(); i++)
-	{
-		const double px_b = ptsx[i] - px;
-		const double py_b = ptsy[i] - py;
-		ptsx_b[i] = px_b * cos(psi) + py_b * sin(psi);
-		ptsy_b[i] = -px_b * sin(psi) + py_b * cos(psi);
-	}
+	double x;
+	double y;
+};
+
+Point worldToBody(double x, double y, double theta, double px, double py)
+{
+	double x_b = px - x;
+	double y_b = py - y;
+	double px_b = x_b * cos(theta) + y_b * sin(theta);
+	double py_b = -x_b * sin(theta) + y_b * cos(theta);
+	return {px_b, py_b};
+}
+
+Point bodyToWorld(double x, double y, double theta, double px_b, double py_b)
+{
+	double px = x + px_b * cos(theta) - py_b * sin(theta);
+	double py = y + px_b * sin(theta) + py_b * cos(theta);
+	return {px, py};
 }
 
 int main() {
@@ -211,11 +220,12 @@ int main() {
   	map_waypoints_dx.push_back(d_x);
   	map_waypoints_dy.push_back(d_y);
   }
-  //namespace plt = matplotlibcpp;
-  //plt::plot(map_waypoints_x, map_waypoints_y);
-  //plt::show();
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
+  namespace plt = matplotlibcpp;
+	
+  string log_file = "../../data/logger.csv";
+  ofstream out_log(log_file.c_str(), ofstream::out);
+	
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &out_log](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -240,6 +250,7 @@ int main() {
           	double car_d = j[1]["d"];
           	double car_yaw = j[1]["yaw"];
           	double car_speed = j[1]["speed"];
+			double theta = deg2rad(car_yaw);
 
           	// Previous path data given to the Planner
           	auto previous_path_x = j[1]["previous_path_x"];
@@ -250,24 +261,63 @@ int main() {
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
+			cout << "car pos " << car_x << " " << car_y << " " << car_yaw << endl;
 
-          	json msgJson;
+			// find next waypoints list
+			const int kMaxNextWayPoints = 10;
+			vector<double> wayPoints_x, wayPoints_y;
+			int nextWayPoint = ClosestWaypoint(car_x, car_y, map_waypoints_x, map_waypoints_y); // the first waypoint index of a waypoints segment
+			nextWayPoint = nextWayPoint - 4;
+			if (nextWayPoint < 0)
+				nextWayPoint = map_waypoints_x.size() + nextWayPoint;
+			vector<int> wayPointsIndex;
+			
+			for (int i = 0, nextwayPointIndex = nextWayPoint; i < kMaxNextWayPoints; i++)
+			{
+				wayPointsIndex.push_back(nextwayPointIndex);
+				wayPoints_x.push_back(map_waypoints_x[nextwayPointIndex]);
+				wayPoints_y.push_back(map_waypoints_y[nextwayPointIndex]);
+				nextwayPointIndex++;
+				nextwayPointIndex = nextwayPointIndex % map_waypoints_x.size();
+			}
+			cout << "wayPointsIndex " << wayPointsIndex[0] << wayPointsIndex[1] << wayPointsIndex[2] << endl;
+			cout << "wayPoints_x " << wayPoints_x[0] << "," << wayPoints_x[1] << "," << wayPoints_x[2] << endl;
+			cout << "wayPoints_y " << wayPoints_y[0] << "," << wayPoints_y[1] << "," << wayPoints_y[2] << endl;
 
-          	vector<double> next_x_vals;
-          	vector<double> next_y_vals;
-			double pos_x;
-			double pos_y;
+			// choose lane, middle lane for now
+			vector<double> lane_waypoints_x, lane_waypoints_y;
+			for(int i = nextWayPoint; i < nextWayPoint + kMaxNextWayPoints; i++)
+			{
+				lane_waypoints_x.push_back(map_waypoints_x[i] + 6 * map_waypoints_dx[i]);
+				lane_waypoints_y.push_back(map_waypoints_y[i] + 6 * map_waypoints_dy[i]);
+			}
+			cout << "lane_waypoints_x " << lane_waypoints_x[0] << "," << lane_waypoints_x[1] << "," << lane_waypoints_x[2] << endl;
+			cout << "lane_waypoints_y " << lane_waypoints_y[0] << "," << lane_waypoints_y[1] << "," << lane_waypoints_y[2] << endl;
 
+			// transform waypoints from world to body frame
+			vector<double> wayPoints_bx, wayPoints_by;
+			for (int i = 0; i < lane_waypoints_x.size(); i++)
+			{
+				Point point_b = worldToBody(car_x, car_y, theta, lane_waypoints_x[i], lane_waypoints_y[i]);
+				wayPoints_bx.push_back(point_b.x);
+				wayPoints_by.push_back(point_b.y);
+			}
+			cout << "wayPoints_bx " << wayPoints_bx[0] << "," << wayPoints_bx[1] << "," << wayPoints_bx[2] << endl;
+			cout << "wayPoints_by " << wayPoints_by[0] << "," << wayPoints_by[1] << "," << wayPoints_by[2] << endl;
+
+			// build spline for interplotation
 			tk::spline s;
-			vector<double> new_mapx, new_mapy;
-			for(int i = 0; i < 50; i++)
-            {
-                new_mapx.push_back(map_waypoints_x[i] + 6 * map_waypoints_dx[i]);
-                new_mapy.push_back(map_waypoints_y[i] + 6 * map_waypoints_dy[i]);
-            }
-
-			s.set_points(new_mapx, new_mapy);
-
+			s.set_points(wayPoints_bx, wayPoints_by);
+			
+			// calculate sampling frequency base on speed
+			const int kSpeedLimit = 22; // m/s
+			const int kControllerFrequency = 50; //50Hz, car moves 50 times per second
+			const double distance = map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[wayPointsIndex.front()];
+			const int samplingFrequency = distance * kControllerFrequency / kSpeedLimit;
+			
+			// prepare 50 points to send
+			vector<double> next_x_vals, next_y_vals;
+			double pos_x, pos_y;
 			int path_size = previous_path_x.size();
 			
 			for(int i = 0; i < path_size; i++)
@@ -276,11 +326,10 @@ int main() {
 				next_y_vals.push_back(previous_path_y[i]);
 			}
 			
-			printf("previous size %d\n", path_size);
 			if(path_size == 0)
 			{
-				pos_x = car_x;
-				pos_y = car_y;
+				pos_x = car_x;//lane_waypoints_x[4];
+				pos_y = car_y;//lane_waypoints_y[4];
 			}
 			else
 			{
@@ -288,22 +337,34 @@ int main() {
 				pos_y = previous_path_y[path_size-1];
 			}
 			
-			double dist_inc = 0.5;
-			for(int i = 0; i < 50-path_size; i++)
+			const double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / samplingFrequency;
+			cout << "previoous[0]: " << previous_path_x[0] << "," << previous_path_y[0] << endl;
+			
+			
+			cout << "final point: ";
+			for(int i = 1; i <= 50-path_size; i++)
 			{
-				next_x_vals.push_back(pos_x + i * dist_inc);
-				next_y_vals.push_back(s(pos_x + i * dist_inc));
-//				cout << map_waypoints_x[i] << " " << map_waypoints_y[i] << endl;
-			}        
-//
- 
-          	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+				Point point_b = worldToBody(car_x, car_y, theta, pos_x, pos_y);
+				const double xb = point_b.x + i * x_step;
+				const double yb = s(xb);
+				
+				Point point = bodyToWorld(car_x, car_y, theta, xb, yb);
+				next_x_vals.push_back(point.x);
+				next_y_vals.push_back(point.y);
+				cout << "(" << point.x << "," << point.y << ")," ;
+				out_log << point.x << "," << point.y << endl;
+			}
+			cout << endl;
+			
+//			plt::plot(next_x_vals, next_y_vals);
+//			plt::show();
+
+			// send json message
+			json msgJson;
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
-
-          	//this_thread::sleep_for(chrono::milliseconds(1000));
           	ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           
         }

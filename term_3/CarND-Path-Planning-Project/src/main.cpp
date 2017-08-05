@@ -162,6 +162,19 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
+void worldToBody(double px, double py, double psi, const vector<double>& ptsx, const vector<double>& ptsy, vector<double>& ptsx_b, vector<double>& ptsy_b)
+{
+	assert((ptsx.size() == ptsy.size()) && (ptsx_b.size() == ptsy_b.size()) && (ptsx.size() == ptsx_b.size()));
+	
+	for (size_t i = 0; i < ptsx.size(); i++)
+	{
+		const double px_b = ptsx[i] - px;
+		const double py_b = ptsy[i] - py;
+		ptsx_b[i] = px_b * cos(psi) + py_b * sin(psi);
+		ptsy_b[i] = -px_b * sin(psi) + py_b * cos(psi);
+	}
+}
+
 int main() {
   uWS::Hub h;
 
@@ -198,7 +211,6 @@ int main() {
   	map_waypoints_dx.push_back(d_x);
   	map_waypoints_dy.push_back(d_y);
   }
-  printf("here?");
   //namespace plt = matplotlibcpp;
   //plt::plot(map_waypoints_x, map_waypoints_y);
   //plt::show();
@@ -247,7 +259,6 @@ int main() {
 			double pos_y;
 
 			tk::spline s;
-            printf("here?"); 
 			vector<double> new_mapx, new_mapy;
 			for(int i = 0; i < 50; i++)
             {
@@ -259,11 +270,17 @@ int main() {
 
 			int path_size = previous_path_x.size();
 			
+			for(int i = 0; i < path_size; i++)
+			{
+				next_x_vals.push_back(previous_path_x[i]);
+				next_y_vals.push_back(previous_path_y[i]);
+			}
+			
+			printf("previous size %d\n", path_size);
 			if(path_size == 0)
 			{
 				pos_x = car_x;
 				pos_y = car_y;
-//				angle = deg2rad(car_yaw);
 			}
 			else
 			{
@@ -272,10 +289,10 @@ int main() {
 			}
 			
 			double dist_inc = 0.5;
-			for(int i = 0; i < 50; i++)
+			for(int i = 0; i < 50-path_size; i++)
 			{
-				next_x_vals.push_back(pos_x + i * 0.01);
-				next_y_vals.push_back(s(pos_x + i * 0.01));
+				next_x_vals.push_back(pos_x + i * dist_inc);
+				next_y_vals.push_back(s(pos_x + i * dist_inc));
 //				cout << map_waypoints_x[i] << " " << map_waypoints_y[i] << endl;
 			}        
 //

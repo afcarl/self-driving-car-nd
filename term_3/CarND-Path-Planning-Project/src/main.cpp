@@ -184,6 +184,31 @@ Point bodyToWorld(double x, double y, double theta, double px_b, double py_b)
 	return {px, py};
 }
 
+float rampingUp(int timeStep)
+{
+	return 22 / (1 + exp(-0.01 * (timeStep - 300)));
+}
+
+double getWayPointSegmentDistance(const vector<int>& wayPointsIndex, const vector<double>& map_waypoints_s)
+{
+	double distance;
+	
+	// check if the car has wrapped around by looking at the position of 0(start waypoint index) in our waypoint segment.
+	int index = std::find(wayPointsIndex.begin(), wayPointsIndex.end(), 0) - wayPointsIndex.begin();
+	if (index != wayPointsIndex.size() && index != 0)
+	{
+		// use the distance between second last waypoint and the last.
+		const double kGapLastAndFirst = 42.6;
+		double startPortion = (index == 1) ? 0 : (map_waypoints_s[wayPointsIndex[index-1]] - map_waypoints_s[wayPointsIndex.front()]);
+		double endPortion = (index == (wayPointsIndex.size() - 1)) ? 0 : (map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[0]);
+		distance = startPortion + kGapLastAndFirst + endPortion;
+	}
+	else
+		distance = map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[wayPointsIndex.front()];
+	
+	return distance;
+}
+
 int main() {
   uWS::Hub h;
 
@@ -224,8 +249,9 @@ int main() {
 	
   string log_file = "../../data/logger.csv";
   ofstream out_log(log_file.c_str(), ofstream::out);
-	
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &out_log](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  int rampUpTimer = 0;
+
+  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &out_log, &rampUpTimer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -261,58 +287,76 @@ int main() {
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
-			cout << "car pos " << car_x << " " << car_y << " " << car_yaw << endl;
+//			cout << "car pos " << car_x << " " << car_y << " " << car_yaw << endl;
 
 			// find next waypoints list
 			const int kMaxNextWayPoints = 10;
 			vector<double> wayPoints_x, wayPoints_y;
 			int nextWayPoint = ClosestWaypoint(car_x, car_y, map_waypoints_x, map_waypoints_y); // the first waypoint index of a waypoints segment
+			cout << "closet waypoint index " << nextWayPoint << endl;
 			nextWayPoint = nextWayPoint - 4;
+			static int previousIndex = nextWayPoint;
+			
 			if (nextWayPoint < 0)
 				nextWayPoint = map_waypoints_x.size() + nextWayPoint;
-			vector<int> wayPointsIndex;
 			
+			vector<int> wayPointsIndex;
 			for (int i = 0, nextwayPointIndex = nextWayPoint; i < kMaxNextWayPoints; i++)
 			{
 				wayPointsIndex.push_back(nextwayPointIndex);
 				wayPoints_x.push_back(map_waypoints_x[nextwayPointIndex]);
 				wayPoints_y.push_back(map_waypoints_y[nextwayPointIndex]);
 				nextwayPointIndex++;
-				nextwayPointIndex = nextwayPointIndex % map_waypoints_x.size();
+				nextwayPointIndex = nextwayPointIndex % (map_waypoints_x.size());
 			}
-			cout << "wayPointsIndex " << wayPointsIndex[0] << wayPointsIndex[1] << wayPointsIndex[2] << endl;
-			cout << "wayPoints_x " << wayPoints_x[0] << "," << wayPoints_x[1] << "," << wayPoints_x[2] << endl;
-			cout << "wayPoints_y " << wayPoints_y[0] << "," << wayPoints_y[1] << "," << wayPoints_y[2] << endl;
-
+			cout << "wayPointsIndex: ";
+			for (int i = 0; i < wayPointsIndex.size(); i++)
+				cout << " " << wayPointsIndex[i];
+			cout << endl;
+			
 			// choose lane, middle lane for now
 			vector<double> lane_waypoints_x, lane_waypoints_y;
-			for(int i = nextWayPoint; i < nextWayPoint + kMaxNextWayPoints; i++)
+			for(auto index : wayPointsIndex)
 			{
-				lane_waypoints_x.push_back(map_waypoints_x[i] + 6 * map_waypoints_dx[i]);
-				lane_waypoints_y.push_back(map_waypoints_y[i] + 6 * map_waypoints_dy[i]);
+				lane_waypoints_x.push_back(map_waypoints_x[index] + 6 * map_waypoints_dx[index]);
+				lane_waypoints_y.push_back(map_waypoints_y[index] + 6 * map_waypoints_dy[index]);
 			}
-			cout << "lane_waypoints_x " << lane_waypoints_x[0] << "," << lane_waypoints_x[1] << "," << lane_waypoints_x[2] << endl;
-			cout << "lane_waypoints_y " << lane_waypoints_y[0] << "," << lane_waypoints_y[1] << "," << lane_waypoints_y[2] << endl;
+
+			static double car_next_x = car_x;
+			static double car_next_y = car_y;
+			static double next_theta = theta;
+			if (nextWayPoint != previousIndex)
+			{
+				previousIndex = nextWayPoint;
+				car_next_x = car_x;
+				car_next_y = car_y;
+				next_theta = theta;
+			}
+//			double car_next_x = car_x;
+//			double car_next_y = car_y;
+//			double next_theta = theta;
 
 			// transform waypoints from world to body frame
 			vector<double> wayPoints_bx, wayPoints_by;
 			for (int i = 0; i < lane_waypoints_x.size(); i++)
 			{
-				Point point_b = worldToBody(car_x, car_y, theta, lane_waypoints_x[i], lane_waypoints_y[i]);
+				Point point_b = worldToBody(car_next_x, car_next_y, next_theta, lane_waypoints_x[i], lane_waypoints_y[i]);
 				wayPoints_bx.push_back(point_b.x);
 				wayPoints_by.push_back(point_b.y);
 			}
-			cout << "wayPoints_bx " << wayPoints_bx[0] << "," << wayPoints_bx[1] << "," << wayPoints_bx[2] << endl;
-			cout << "wayPoints_by " << wayPoints_by[0] << "," << wayPoints_by[1] << "," << wayPoints_by[2] << endl;
 
 			// build spline for interplotation
 			tk::spline s;
 			s.set_points(wayPoints_bx, wayPoints_by);
 			
-			// calculate sampling frequency base on speed
-			const int kSpeedLimit = 22; // m/s
+			// ramping up smoothly using s curve
+			cout << "time step " << rampUpTimer++ << endl;
+			const float kSpeedLimit = rampingUp(rampUpTimer);
+//			const float kSpeedLimit = 22; // m/s
 			const int kControllerFrequency = 50; //50Hz, car moves 50 times per second
-			const double distance = map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[wayPointsIndex.front()];
+			// use lane's frenet?
+			double	distance = getWayPointSegmentDistance(wayPointsIndex, map_waypoints_s);
+			// calculate sampling frequency base on speed
 			const int samplingFrequency = distance * kControllerFrequency / kSpeedLimit;
 			
 			// prepare 50 points to send
@@ -338,27 +382,26 @@ int main() {
 			}
 			
 			const double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / samplingFrequency;
-			cout << "previoous[0]: " << previous_path_x[0] << "," << previous_path_y[0] << endl;
 			
-			
+			cout << "path_size" << path_size << "last point to be: " << previous_path_x[0] << "," << previous_path_y[0] << endl;
 			cout << "final point: ";
+
+			Point point_b = worldToBody(car_next_x, car_next_y, next_theta, pos_x, pos_y);
+			
 			for(int i = 1; i <= 50-path_size; i++)
 			{
-				Point point_b = worldToBody(car_x, car_y, theta, pos_x, pos_y);
 				const double xb = point_b.x + i * x_step;
 				const double yb = s(xb);
 				
-				Point point = bodyToWorld(car_x, car_y, theta, xb, yb);
+				Point point = bodyToWorld(car_next_x, car_next_y, next_theta, xb, yb);
 				next_x_vals.push_back(point.x);
 				next_y_vals.push_back(point.y);
 				cout << "(" << point.x << "," << point.y << ")," ;
-				out_log << point.x << "," << point.y << endl;
+				out_log << std::setprecision(9) << xb << "," << yb << "," << point.x << "," << point.y
+				<< car_x << "," << car_y << "," << car_yaw << endl;
 			}
 			cout << endl;
 			
-//			plt::plot(next_x_vals, next_y_vals);
-//			plt::show();
-
 			// send json message
 			json msgJson;
           	msgJson["next_x"] = next_x_vals;

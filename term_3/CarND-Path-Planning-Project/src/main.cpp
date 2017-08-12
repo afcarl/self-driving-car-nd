@@ -7,11 +7,14 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include "Eigen-3.3/Eigen/LU"
 #include "json.hpp"
 #include "spline.h"
 #include "matplotlibcpp.h"
 
 using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 // for convenience
 using json = nlohmann::json;
@@ -186,8 +189,15 @@ Point bodyToWorld(double x, double y, double theta, double px_b, double py_b)
 
 float rampingUp(int timeStep)
 {
-	return 22 / (1 + exp(-0.01 * (timeStep - 300)));
+	return 22 / (1 + exp(-0.012 * (timeStep - 300))); // logistic function
 }
+
+double changeRight(int timeStep)
+{
+//	return 6 + 4 / (1 + exp(-0.02 * (timeStep - 500))); // logistic function
+	return (4.0/400)*timeStep + 6;
+}
+
 
 double getWayPointSegmentDistance(const vector<int>& wayPointsIndex, const vector<double>& map_waypoints_s)
 {
@@ -208,6 +218,56 @@ double getWayPointSegmentDistance(const vector<int>& wayPointsIndex, const vecto
 	
 	return distance;
 }
+
+vector<double> JMT(vector< double> start, vector <double> end, double T)
+{
+	/*
+	 Calculate the Jerk Minimizing Trajectory that connects the initial state
+	 to the final state in time T.
+	 
+	 INPUTS
+	 
+	 start - the vehicles start location given as a length three array
+	 corresponding to initial values of [s, s_dot, s_double_dot]
+	 
+	 end   - the desired end state for vehicle. Like "start" this is a
+	 length three array.
+	 
+	 T     - The duration, in seconds, over which this maneuver should occur.
+	 
+	 OUTPUT
+	 an array of length 6, each value corresponding to a coefficent in the polynomial
+	 s(t) = a_0 + a_1 * t + a_2 * t**2 + a_3 * t**3 + a_4 * t**4 + a_5 * t**5
+	 
+	 EXAMPLE
+	 
+	 > JMT( [0, 10, 0], [10, 10, 0], 1)
+	 [0.0, 10.0, 0.0, 0.0, 0.0, 0.0]
+	 */
+	
+	MatrixXd A = MatrixXd(3, 3);
+	A << T*T*T, T*T*T*T, T*T*T*T*T,
+	3*T*T, 4*T*T*T,5*T*T*T*T,
+	6*T, 12*T*T, 20*T*T*T;
+	
+	MatrixXd B = MatrixXd(3,1);
+	B << end[0]-(start[0]+start[1]*T+.5*start[2]*T*T),
+	end[1]-(start[1]+start[2]*T),
+	end[2]-start[2];
+	
+	MatrixXd Ai = A.inverse();
+	
+	MatrixXd C = Ai*B;
+	
+	vector <double> result = {start[0], start[1], .5*start[2]};
+	for(int i = 0; i < C.size(); i++)
+	{
+		result.push_back(C.data()[i]);
+	}
+	
+	return result;
+}
+
 
 int main() {
   uWS::Hub h;
@@ -314,50 +374,6 @@ int main() {
 				cout << " " << wayPointsIndex[i];
 			cout << endl;
 			
-			// choose lane, middle lane for now
-			vector<double> lane_waypoints_x, lane_waypoints_y;
-			for(auto index : wayPointsIndex)
-			{
-				lane_waypoints_x.push_back(map_waypoints_x[index] + 6 * map_waypoints_dx[index]);
-				lane_waypoints_y.push_back(map_waypoints_y[index] + 6 * map_waypoints_dy[index]);
-			}
-
-			static double car_next_x = car_x;
-			static double car_next_y = car_y;
-			static double next_theta = theta;
-			if (nextWayPoint != previousIndex)
-			{
-				previousIndex = nextWayPoint;
-				car_next_x = car_x;
-				car_next_y = car_y;
-				next_theta = theta;
-			}
-//			double car_next_x = car_x;
-//			double car_next_y = car_y;
-//			double next_theta = theta;
-
-			// transform waypoints from world to body frame
-			vector<double> wayPoints_bx, wayPoints_by;
-			for (int i = 0; i < lane_waypoints_x.size(); i++)
-			{
-				Point point_b = worldToBody(car_next_x, car_next_y, next_theta, lane_waypoints_x[i], lane_waypoints_y[i]);
-				wayPoints_bx.push_back(point_b.x);
-				wayPoints_by.push_back(point_b.y);
-			}
-
-			// build spline for interplotation
-			tk::spline s;
-			s.set_points(wayPoints_bx, wayPoints_by);
-			
-			// ramping up smoothly using s curve
-			cout << "time step " << rampUpTimer++ << endl;
-			const float kSpeedLimit = rampingUp(rampUpTimer);
-//			const float kSpeedLimit = 22; // m/s
-			const int kControllerFrequency = 50; //50Hz, car moves 50 times per second
-			// use lane's frenet?
-			double	distance = getWayPointSegmentDistance(wayPointsIndex, map_waypoints_s);
-			// calculate sampling frequency base on speed
-			const int samplingFrequency = distance * kControllerFrequency / kSpeedLimit;
 			
 			// prepare 50 points to send
 			vector<double> next_x_vals, next_y_vals;
@@ -372,35 +388,139 @@ int main() {
 			
 			if(path_size == 0)
 			{
-				pos_x = car_x;//lane_waypoints_x[4];
-				pos_y = car_y;//lane_waypoints_y[4];
+				pos_x = car_x;
+				pos_y = car_y;
 			}
 			else
 			{
 				pos_x = previous_path_x[path_size-1];
 				pos_y = previous_path_y[path_size-1];
 			}
-			
-			const double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / samplingFrequency;
-			
-			cout << "path_size" << path_size << "last point to be: " << previous_path_x[0] << "," << previous_path_y[0] << endl;
-			cout << "final point: ";
 
-			Point point_b = worldToBody(car_next_x, car_next_y, next_theta, pos_x, pos_y);
 			
-			for(int i = 1; i <= 50-path_size; i++)
+			double lane = 6;
+			static bool change_lane = false;
+			vector<double> xy = {0,0};
+			
+			if (rampUpTimer > 300 && rampUpTimer < 450)
+				change_lane = true;
+			if (rampUpTimer >= 450)
 			{
-				const double xb = point_b.x + i * x_step;
-				const double yb = s(xb);
-				
-				Point point = bodyToWorld(car_next_x, car_next_y, next_theta, xb, yb);
-				next_x_vals.push_back(point.x);
-				next_y_vals.push_back(point.y);
-				cout << "(" << point.x << "," << point.y << ")," ;
-				out_log << std::setprecision(9) << xb << "," << yb << "," << point.x << "," << point.y
-				<< car_x << "," << car_y << "," << car_yaw << endl;
+				lane = 10;
+				change_lane = false;
 			}
-			cout << endl;
+			if (change_lane)
+			{
+				static vector<double> s_coeffs, d_coeffs;
+				static bool generated = false;
+
+				if (!generated)
+				{
+					auto sd = getFrenet(pos_x, pos_y, theta, map_waypoints_x, map_waypoints_y);
+					
+					double s0 = sd[0];
+					
+					vector <double> s_start = {s0, car_speed, 0};
+					vector <double> s_end = {s0 + 75, car_speed, 0};
+					
+					vector <double> d_start = {car_d, 0, 0};
+					vector <double> d_end = {10, 0, 0};
+
+					s_coeffs = JMT(s_start, s_end, 3);
+					d_coeffs = JMT(d_start, d_end, 3);
+					generated = true;
+				}
+				
+				double t = (rampUpTimer - 300) *  (3.0 / 150);
+				double s_next = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
+				double d_next = d_coeffs[0] + d_coeffs[1]*t + d_coeffs[2]*pow(t,2) + d_coeffs[3]*pow(t,3) + d_coeffs[4]*pow(t,4) + d_coeffs[5]*pow(t,5);
+				
+				cout << "!!!!!!!!!!!!!!!! " << t << "," << s_next << "," << d_next << endl;
+				xy = getXY(s_next, d_next, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+//				out_log << std::setprecision(9) << t << "," << s_next << "," << t << "," << d_next << endl;
+				out_log << std::setprecision(9) << t << "," << s_next << "," << xy[0] << "," << xy[1] << endl;
+
+			}
+			
+		
+			cout << xy[0] << "," << xy[1] << "car_s " << car_s << " car_d" << car_d << "time step " << rampUpTimer++ << endl;
+
+			if (!change_lane)
+			{
+				// choose lane, middle lane for now
+				vector<double> lane_waypoints_x, lane_waypoints_y;
+				for(auto index : wayPointsIndex)
+				{
+					lane_waypoints_x.push_back(map_waypoints_x[index] + lane * map_waypoints_dx[index]);
+					lane_waypoints_y.push_back(map_waypoints_y[index] + lane * map_waypoints_dy[index]);
+				}
+				
+				static double car_next_x = car_x;
+				static double car_next_y = car_y;
+				static double next_theta = theta;
+				if (nextWayPoint != previousIndex)
+				{
+					previousIndex = nextWayPoint;
+					car_next_x = car_x;
+					car_next_y = car_y;
+					next_theta = theta;
+				}
+
+				// transform waypoints from world to body frame
+				vector<double> wayPoints_bx, wayPoints_by;
+				for (int i = 0; i < lane_waypoints_x.size(); i++)
+				{
+					Point point_b = worldToBody(car_next_x, car_next_y, next_theta, lane_waypoints_x[i], lane_waypoints_y[i]);
+					wayPoints_bx.push_back(point_b.x);
+					wayPoints_by.push_back(point_b.y);
+				}
+
+				// build spline for interplotation
+				tk::spline s;
+				s.set_points(wayPoints_bx, wayPoints_by);
+				
+				// ramping up smoothly using s curve
+				const float kSpeedLimit = rampingUp(rampUpTimer);
+	//			const float kSpeedLimit = 22; // m/s
+				const int kControllerFrequency = 50; //50Hz, car moves 50 times per second
+				// use car frenet?
+				double	distance = getWayPointSegmentDistance(wayPointsIndex, map_waypoints_s);
+				// calculate sampling frequency base on speed
+				const int samplingFrequency = distance * kControllerFrequency / kSpeedLimit;
+				
+				
+				const double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / samplingFrequency;
+				
+				cout << "path_size" << path_size << "last point to be: " << previous_path_x[0] << "," << previous_path_y[0] << endl;
+				cout << "final point: ";
+
+				Point point_b = worldToBody(car_next_x, car_next_y, next_theta, pos_x, pos_y);
+				
+				for(int i = 1; i <= 50-path_size; i++)
+				{
+					const double xb = point_b.x + i * x_step;
+					const double yb = s(xb);
+					
+					Point point = bodyToWorld(car_next_x, car_next_y, next_theta, xb, yb);
+					next_x_vals.push_back(point.x);
+					next_y_vals.push_back(point.y);
+					cout << "(" << point.x << "," << point.y << ")," ;
+//					out_log << std::setprecision(9) << xb << "," << yb << "," << point.x << "," << point.y  << ","
+//					<< car_x << "," << car_y << "," << car_yaw << endl;
+				}
+				cout << endl;
+			}
+			else
+			{
+				for(int i = 1; i <= 50-path_size; i++)
+				{
+					next_x_vals.push_back(xy[0]);
+					next_y_vals.push_back(xy[1]);
+//					out_log << std::setprecision(9) << 0 << "," << 0 << "," << xy[0] << "," <<xy[1] << ","
+//					<< car_x << "," << car_y << "," << car_yaw << endl;
+				}
+				cout << endl;
+			}
 			
 			// send json message
 			json msgJson;

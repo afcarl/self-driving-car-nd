@@ -356,7 +356,17 @@ int main() {
 			cout << "closet waypoint index " << nextWayPoint << endl;
 			nextWayPoint = nextWayPoint - 4;
 			static int previousIndex = nextWayPoint;
-			
+			static double car_next_x = car_x;
+			static double car_next_y = car_y;
+			static double next_theta = theta;
+			if (nextWayPoint != previousIndex)
+			{
+				previousIndex = nextWayPoint;
+				car_next_x = car_x;
+				car_next_y = car_y;
+				next_theta = theta;
+			}
+
 			if (nextWayPoint < 0)
 				nextWayPoint = map_waypoints_x.size() + nextWayPoint;
 			
@@ -402,9 +412,9 @@ int main() {
 			static bool change_lane = false;
 			vector<double> xy = {0,0};
 			
-			if (rampUpTimer > 300 && rampUpTimer < 450)
+			if (rampUpTimer >= 400 && rampUpTimer < 550)
 				change_lane = true;
-			if (rampUpTimer >= 450)
+			if (rampUpTimer >= 550)
 			{
 				lane = 10;
 				change_lane = false;
@@ -413,17 +423,53 @@ int main() {
 			{
 				static vector<double> s_coeffs, d_coeffs;
 				static bool generated = false;
+				static vector<double> wayPoints_x, wayPoints_y, wayPoints_s;
 
 				if (!generated)
 				{
-					auto sd = getFrenet(pos_x, pos_y, theta, map_waypoints_x, map_waypoints_y);
+					vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
+;
+					for(auto index : wayPointsIndex)
+					{
+						lane_waypoints_x.push_back(map_waypoints_x[index]);
+						lane_waypoints_y.push_back(map_waypoints_y[index]);
+						lane_waypoints_s.push_back(map_waypoints_s[index]);
+					}
 					
-					double s0 = sd[0];
+					// transform waypoints from world to body frame
+					vector<double> wayPoints_bx, wayPoints_by;
+					for (int i = 0; i < lane_waypoints_x.size(); i++)
+					{
+						Point point_b = worldToBody(car_next_x, car_next_y, next_theta, lane_waypoints_x[i], lane_waypoints_y[i]);
+						wayPoints_bx.push_back(point_b.x);
+						wayPoints_by.push_back(point_b.y);
+					}
 					
-					vector <double> s_start = {s0, car_speed, 0};
-					vector <double> s_end = {s0 + 75, car_speed, 0};
+					// build spline for interplotation
+					tk::spline s;
+					s.set_points(wayPoints_bx, wayPoints_by);
 					
-					vector <double> d_start = {car_d, 0, 0};
+					tk::spline s_s;
+					s_s.set_points(wayPoints_bx, lane_waypoints_s);
+					double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / 150.0;
+					//double s_step = (map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[wayPointsIndex.front()]) / 100.0;
+
+					for(int i = 0; i < 50; i++)
+					{
+						const double xb = wayPoints_bx.front() + i * x_step;
+						const double yb = s(xb);
+						
+						Point point = bodyToWorld(car_next_x, car_next_y, next_theta, xb, yb);
+						wayPoints_x.push_back(point.x);
+						wayPoints_y.push_back(point.y);
+						wayPoints_s.push_back(s_s(xb));
+//						out_log << std::setprecision(9) << point.x << "," << point.y << "," << wayPoints_s[i] << endl;
+					}
+					
+					vector <double> s_start = {end_path_s, car_speed, 0};
+					vector <double> s_end = {end_path_s + 75, car_speed, 0};
+					
+					vector <double> d_start = {end_path_d, 0, 0};
 					vector <double> d_end = {10, 0, 0};
 
 					s_coeffs = JMT(s_start, s_end, 3);
@@ -431,19 +477,29 @@ int main() {
 					generated = true;
 				}
 				
-				double t = (rampUpTimer - 300) *  (3.0 / 150);
-				double s_next = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
-				double d_next = d_coeffs[0] + d_coeffs[1]*t + d_coeffs[2]*pow(t,2) + d_coeffs[3]*pow(t,3) + d_coeffs[4]*pow(t,4) + d_coeffs[5]*pow(t,5);
-				
-				cout << "!!!!!!!!!!!!!!!! " << t << "," << s_next << "," << d_next << endl;
-				xy = getXY(s_next, d_next, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-//				out_log << std::setprecision(9) << t << "," << s_next << "," << t << "," << d_next << endl;
-				out_log << std::setprecision(9) << t << "," << s_next << "," << xy[0] << "," << xy[1] << endl;
+				static int lastPos = rampUpTimer;
+				for (int i = 0; i < 50-path_size; i++)
+				{
+					double t = (lastPos - 400) *  (3.0 / 150.0);
+					double s_next = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
+					double d_next = d_coeffs[0] + d_coeffs[1]*t + d_coeffs[2]*pow(t,2) + d_coeffs[3]*pow(t,3) + d_coeffs[4]*pow(t,4) + d_coeffs[5]*pow(t,5);
+					
+					cout << "!!!!!!!!" << "speed " << car_speed << "," << t << "," << s_next << "," << d_next << endl;
+					xy = getXY(s_next, d_next, wayPoints_s, wayPoints_x, wayPoints_y);
+//					xy = getXY(s_next, d_next, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+//					out_log << std::setprecision(9) << t << "," << s_next << "," << t << "," << d_next << endl;
+//					out_log << std::setprecision(9) << t << "," << s_next << "," << xy[0] << "," << xy[1] << endl;
+
+					next_x_vals.push_back(xy[0]);
+					next_y_vals.push_back(xy[1]);
+					out_log << std::setprecision(9) <<  xy[0] << "," << xy[1]  << endl;
+					lastPos ++;
+				}
 
 			}
 			
-		
-			cout << xy[0] << "," << xy[1] << "car_s " << car_s << " car_d" << car_d << "time step " << rampUpTimer++ << endl;
+			cout << xy[0] << "," << xy[1] << "end_s" << end_path_s << "car_s " << car_s << " car_d" << car_d << "time step " << rampUpTimer++ << endl;
 
 			if (!change_lane)
 			{
@@ -455,16 +511,6 @@ int main() {
 					lane_waypoints_y.push_back(map_waypoints_y[index] + lane * map_waypoints_dy[index]);
 				}
 				
-				static double car_next_x = car_x;
-				static double car_next_y = car_y;
-				static double next_theta = theta;
-				if (nextWayPoint != previousIndex)
-				{
-					previousIndex = nextWayPoint;
-					car_next_x = car_x;
-					car_next_y = car_y;
-					next_theta = theta;
-				}
 
 				// transform waypoints from world to body frame
 				vector<double> wayPoints_bx, wayPoints_by;
@@ -505,19 +551,10 @@ int main() {
 					next_x_vals.push_back(point.x);
 					next_y_vals.push_back(point.y);
 					cout << "(" << point.x << "," << point.y << ")," ;
-//					out_log << std::setprecision(9) << xb << "," << yb << "," << point.x << "," << point.y  << ","
+//					out_log << std::setprecision(9) << point.x << "," << point.y << endl;
 //					<< car_x << "," << car_y << "," << car_yaw << endl;
-				}
-				cout << endl;
-			}
-			else
-			{
-				for(int i = 1; i <= 50-path_size; i++)
-				{
-					next_x_vals.push_back(xy[0]);
-					next_y_vals.push_back(xy[1]);
-//					out_log << std::setprecision(9) << 0 << "," << 0 << "," << xy[0] << "," <<xy[1] << ","
-//					<< car_x << "," << car_y << "," << car_yaw << endl;
+					out_log << std::setprecision(9) << point.x << "," << point.y  << endl;
+
 				}
 				cout << endl;
 			}

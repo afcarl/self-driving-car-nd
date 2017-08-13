@@ -295,6 +295,25 @@ void getMoreWayPoints(double x, double y, double theta, const vector<int>& wayPo
 	}
 }
 
+void getSplineForWayPoints(double x, double y, double theta, const vector<int>& wayPointsIndex,
+					  const vector<double>& map_waypoints_x, const vector<double>& map_waypoints_y, const vector<double>& map_waypoints_s,
+					  const vector<double>& map_waypoints_dx, const vector<double>& map_waypoints_dy,
+					  tk::spline& xb_s, tk::spline& yb_s)
+{
+	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
+	for(auto index : wayPointsIndex)
+	{
+		lane_waypoints_x.push_back(map_waypoints_x[index] + 6 * map_waypoints_dx[index]);
+		lane_waypoints_y.push_back(map_waypoints_y[index] + 6 * map_waypoints_dy[index]);
+		lane_waypoints_s.push_back(map_waypoints_s[index]);
+	}
+	
+	// build spline for interplotation
+	xb_s.set_points(lane_waypoints_s, lane_waypoints_x);
+	yb_s.set_points(lane_waypoints_s, lane_waypoints_y);
+}
+
+
 int main() {
   uWS::Hub h;
 
@@ -412,15 +431,11 @@ int main() {
 			
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			vector<double> more_wayPoints_x, more_wayPoints_y, 	more_wayPoints_s;
-			getMoreWayPoints(car_next_x, car_next_y, next_theta, wayPointsIndex, map_waypoints_x, map_waypoints_y, map_waypoints_s,
-							 more_wayPoints_x, more_wayPoints_y, more_wayPoints_s);
-			
-//			for (int i = 0; i < more_wayPoints_s.size(); i++)
-//				out_log << std::setprecision(9) << more_wayPoints_x[i] << "," << more_wayPoints_y[i] << "," << more_wayPoints_s[i] << endl;
+			tk::spline xb_s, yb_s;
+			getSplineForWayPoints(car_next_x, car_next_y, next_theta, wayPointsIndex, map_waypoints_x, map_waypoints_y, map_waypoints_s,
+							 map_waypoints_dx, map_waypoints_dy, xb_s, yb_s);
 			
 			double dist_inc = 0.3;
-			double next_s = 0;
 			const int kLanewidth = 4;
 			double next_d = lane * kLanewidth - 2;
 			
@@ -430,13 +445,14 @@ int main() {
 			double pos_x, pos_y;
 			int path_size = previous_path_x.size();
 			
-			
+			static double next_s = car_s;
+
 			if(path_size == 0)
 			{
 				pos_x = car_x;
 				pos_y = car_y;
 //				next_s = car_s + dist_inc;
-				cout << "first time" << endl;
+//				cout << "first time" << endl;
 			}
 			else
 			{
@@ -445,38 +461,23 @@ int main() {
 //				next_s = end_path_s + dist_inc;
 			}
 			
-//			for(int i = 0; i < path_size; i++)
-//			{
-//				next_x_vals.push_back(previous_path_x[i]);
-//				next_y_vals.push_back(previous_path_y[i]);
-//			}
-
-//			for(int i = 0; i < 50 - path_size; i++)
-//			{
-//				cout << "next_s " << next_s ;
-////				vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-//				vector<double> xy = getXY(next_s, next_d, more_wayPoints_s, more_wayPoints_x, more_wayPoints_y);
-//				cout << " x " << xy[0] << " y " << xy[1] << endl;
-//
-//				next_x_vals.push_back(xy[0]);
-//				next_y_vals.push_back(xy[1]);
-//				next_s += dist_inc;
-//				out_log << std::setprecision(9) << xy[0] << "," << xy[1] << "," << 0 << endl;
-//			}
-			
-			
-			for(int i = 0; i < 50; i++)
+			for(int i = 0; i < path_size; i++)
 			{
-//				cout << "next_s " << next_s ;
-				next_s = car_s + (i+1)*dist_inc;
-				vector<double> xy = getXY(next_s, next_d, more_wayPoints_s, more_wayPoints_x, more_wayPoints_y);
-				cout << " x " << xy[0] << " y " << xy[1] << endl;
-				
-				next_x_vals.push_back(xy[0]);
-				next_y_vals.push_back(xy[1]);
-				out_log << std::setprecision(9) << xy[0] << "," << xy[1] << "," << 0 << endl;
+				next_x_vals.push_back(previous_path_x[i]);
+				next_y_vals.push_back(previous_path_y[i]);
 			}
-
+			
+			for(int i = 0; i < 50 - path_size; i++)
+			{
+				next_s += dist_inc;
+				double x = xb_s(next_s);
+				double y = yb_s(next_s);
+				cout << " x " << x << " y " << y << endl;
+				next_x_vals.push_back(x);
+				next_y_vals.push_back(y);
+				out_log << std::setprecision(9) << next_s << "," << x << "," << next_s << "," << y << endl;
+			}
+			
 			// send json message
 			json msgJson;
           	msgJson["next_x"] = next_x_vals;

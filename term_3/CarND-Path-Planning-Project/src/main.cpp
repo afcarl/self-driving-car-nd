@@ -309,6 +309,8 @@ void getSplineForWayPoints(double x, double y, double theta, const vector<int>& 
 	}
 	
 	// build spline for interplotation
+	
+	// TODO need to detect one lap and offset by totoal length
 	xb_s.set_points(lane_waypoints_s, lane_waypoints_x);
 	yb_s.set_points(lane_waypoints_s, lane_waypoints_y);
 }
@@ -399,7 +401,7 @@ int main() {
 			const int kMaxNextWayPoints = 10;
 			vector<double> wayPoints_x, wayPoints_y;
 			int nextWayPoint = ClosestWaypoint(car_x, car_y, map_waypoints_x, map_waypoints_y); // the first waypoint index of a waypoints segment
-			nextWayPoint = nextWayPoint - 2;
+			nextWayPoint = nextWayPoint - 4;
 			static int previousIndex = nextWayPoint;
 			static double car_next_x = car_x;
 			static double car_next_y = car_y;
@@ -435,7 +437,7 @@ int main() {
 			getSplineForWayPoints(car_next_x, car_next_y, next_theta, wayPointsIndex, map_waypoints_x, map_waypoints_y, map_waypoints_s,
 							 map_waypoints_dx, map_waypoints_dy, xb_s, yb_s);
 			
-			double dist_inc = 0.3;
+			double dist_inc = 0.43;
 			const int kLanewidth = 4;
 			double next_d = lane * kLanewidth - 2;
 			

@@ -16,6 +16,36 @@ using namespace std;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
+const int kLanewidth = 4;
+
+struct Car
+{
+	enum State
+	{
+		kKeepLane,
+		kChangeLeft,
+		kChangeRight,
+	};
+	
+	double x;
+	double y;
+	double s;
+	double d;
+	double speed;
+	double theta;
+	State state;
+	int current_lane;
+};
+
+struct MapInfo
+{
+	vector<double> waypoints_x;
+	vector<double> waypoints_y;
+	vector<double> waypoints_s;
+	vector<double> waypoints_dx;
+	vector<double> waypoints_dy;
+};
+
 // for convenience
 using json = nlohmann::json;
 
@@ -60,16 +90,13 @@ int ClosestWaypoint(double x, double y, vector<double> maps_x, vector<double> ma
 			closestLen = dist;
 			closestWaypoint = i;
 		}
-
 	}
 
 	return closestWaypoint;
-
 }
 
 int NextWaypoint(double x, double y, double theta, vector<double> maps_x, vector<double> maps_y)
 {
-
 	int closestWaypoint = ClosestWaypoint(x,y,maps_x,maps_y);
 
 	double map_x = maps_x[closestWaypoint];
@@ -85,7 +112,6 @@ int NextWaypoint(double x, double y, double theta, vector<double> maps_x, vector
 	}
 
 	return closestWaypoint;
-
 }
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
@@ -134,7 +160,6 @@ vector<double> getFrenet(double x, double y, double theta, vector<double> maps_x
 	frenet_s += distance(0,0,proj_x,proj_y);
 
 	return {frenet_s,frenet_d};
-
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
@@ -162,7 +187,6 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 	double y = seg_y + d*sin(perp_heading);
 
 	return {x,y};
-
 }
 
 vector<double> worldToBody(double x, double y, double theta, double px, double py)
@@ -181,51 +205,14 @@ vector<double> bodyToWorld(double x, double y, double theta, double px_b, double
 	return {px, py};
 }
 
-double getWayPointSegmentDistance(const vector<int>& wayPointsIndex, const vector<double>& map_waypoints_s)
-{
-	double distance;
-	
-	// check if the car has wrapped around by looking at the position of 0(start waypoint index) in our waypoint segment.
-	int index = std::find(wayPointsIndex.begin(), wayPointsIndex.end(), 0) - wayPointsIndex.begin();
-	if (index != wayPointsIndex.size() && index != 0)
-	{
-		// use the distance between second last waypoint and the last.
-		const double kGapLastAndFirst = 42.6;
-		double startPortion = (index == 1) ? 0 : (map_waypoints_s[wayPointsIndex[index-1]] - map_waypoints_s[wayPointsIndex.front()]);
-		double endPortion = (index == (wayPointsIndex.size() - 1)) ? 0 : (map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[0]);
-		distance = startPortion + kGapLastAndFirst + endPortion;
-	}
-	else
-		distance = map_waypoints_s[wayPointsIndex.back()] - map_waypoints_s[wayPointsIndex.front()];
-	
-	return distance;
-}
-
 vector<double> JMT(vector< double> start, vector <double> end, double T)
 {
 	/*
 	 Calculate the Jerk Minimizing Trajectory that connects the initial state
-	 to the final state in time T.
-	 
-	 INPUTS
-	 
-	 start - the vehicles start location given as a length three array
+	 to the final state in time T. 
+	 start/end - the vehicles start location given as a length three array
 	 corresponding to initial values of [s, s_dot, s_double_dot]
-	 
-	 end   - the desired end state for vehicle. Like "start" this is a
-	 length three array.
-	 
-	 T     - The duration, in seconds, over which this maneuver should occur.
-	 
-	 OUTPUT
-	 an array of length 6, each value corresponding to a coefficent in the polynomial
-	 s(t) = a_0 + a_1 * t + a_2 * t**2 + a_3 * t**3 + a_4 * t**4 + a_5 * t**5
-	 
-	 EXAMPLE
-	 
-	 > JMT( [0, 10, 0], [10, 10, 0], 1)
-	 [0.0, 10.0, 0.0, 0.0, 0.0, 0.0]
-	 */
+	*/
 	
 	MatrixXd A = MatrixXd(3, 3);
 	A << T*T*T, T*T*T*T, T*T*T*T*T,
@@ -243,71 +230,18 @@ vector<double> JMT(vector< double> start, vector <double> end, double T)
 	
 	vector <double> result = {start[0], start[1], .5*start[2]};
 	for(int i = 0; i < C.size(); i++)
-	{
 		result.push_back(C.data()[i]);
-	}
 	
 	return result;
 }
 
-void getMoreWayPoints(double x, double y, double theta, const vector<int>& wayPointsIndex,
-					  const vector<double>& map_waypoints_x, const vector<double>& map_waypoints_y, const vector<double>& map_waypoints_s,
-					  vector<double>& more_wayPoints_x, vector<double>& more_wayPoints_y, vector<double>& more_wayPoints_s)
+void getSplineForWayPoints(const MapInfo& mapInfo, const vector<int>& wayPointsIndex, tk::spline& xb_s, tk::spline& yb_s, double next_d)
 {
-	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
-	for(auto index : wayPointsIndex)
-	{
-		lane_waypoints_x.push_back(map_waypoints_x[index]);
-		lane_waypoints_y.push_back(map_waypoints_y[index]);
-		lane_waypoints_s.push_back(map_waypoints_s[index]);
-	}
-	
-	// transform waypoints from world to body frame
-	vector<double> wayPoints_bx, wayPoints_by;
-	for (int i = 0; i < lane_waypoints_x.size(); i++)
-	{
-		auto xy_b = worldToBody(x, y, theta, lane_waypoints_x[i], lane_waypoints_y[i]);
-		wayPoints_bx.push_back(xy_b[0]);
-		wayPoints_by.push_back(xy_b[1]);
-	}
-	
-	// build spline for interplotation
-	tk::spline s;
-	s.set_points(wayPoints_bx, wayPoints_by);
-	
-	tk::spline s_s;
-	s_s.set_points(wayPoints_bx, lane_waypoints_s);
-	
-	const int kWaypointSamples = 100;
-	double x_step = (wayPoints_bx.back() - wayPoints_bx.front()) / kWaypointSamples;
-	
-	// interpolating more waypoints
-	for(int i = 0; i < kWaypointSamples; i++)
-	{
-		double xb = wayPoints_bx.front() + i * x_step;
-		double yb = s(xb);
-		
-		auto xy = bodyToWorld(x, y, theta, xb, yb);
-		more_wayPoints_x.push_back(xy[0]);
-		more_wayPoints_y.push_back(xy[1]);
-		double s = s_s(xb);
-		more_wayPoints_s.push_back(s);
-	}
-}
-
-void getSplineForWayPoints(double x, double y, double theta, const vector<int>& wayPointsIndex,
-					  const vector<double>& map_waypoints_x, const vector<double>& map_waypoints_y, const vector<double>& map_waypoints_s,
-					  const vector<double>& map_waypoints_dx, const vector<double>& map_waypoints_dy,
-					  tk::spline& xb_s, tk::spline& yb_s, double lane)
-{
-	const int kLanewidth = 4;
-	double next_d = lane * kLanewidth - 2;
 	static int cycle = 0;
 	static int previous_last_index = -1;
 	// The max s value before wrapping around the track back to 0
 	const double kMax_s = 6945.554;
 
-	
 	// detecting wrap around
 	if (previous_last_index != wayPointsIndex.back())
 	{
@@ -319,13 +253,14 @@ void getSplineForWayPoints(double x, double y, double theta, const vector<int>& 
 	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
 	for(auto index : wayPointsIndex)
 	{
-		double x = map_waypoints_x[index] + next_d * map_waypoints_dx[index];
-		double y = map_waypoints_y[index] + next_d * map_waypoints_dy[index];
+		double x = mapInfo.waypoints_x[index] + next_d * mapInfo.waypoints_dx[index];
+		double y = mapInfo.waypoints_y[index] + next_d * mapInfo.waypoints_dy[index];
 		lane_waypoints_x.push_back(x);
 		lane_waypoints_y.push_back(y);
-		// map lane's waypoints to frenet
-		auto frenet = getFrenet(x, y, theta, map_waypoints_x, map_waypoints_y);
-		double s = frenet[0] + cycle * kMax_s;
+		// FIXME map lane's waypoints to frenet, using dx, dy
+//		auto frenet = getFrenet(x, y, theta, mapInfo.waypoints_x, mapInfo.waypoints_y);
+//		double s = frenet[0] + cycle * kMax_s;
+		double s = mapInfo.waypoints_s[index] + cycle * kMax_s;
 		lane_waypoints_s.push_back(s);
 	}
 	
@@ -342,7 +277,7 @@ void getSplineForWayPoints(double x, double y, double theta, const vector<int>& 
 		}
 	}
 	
-	// build spline for interplotation
+	// build spline for interpolation
 	xb_s.set_points(lane_waypoints_s, lane_waypoints_x);
 	yb_s.set_points(lane_waypoints_s, lane_waypoints_y);
 }
@@ -374,15 +309,104 @@ double getNextS(int timestep, double current_s)
 	return next_s;
 }
 
+vector<int> findNextWayPointsIndexList(const MapInfo& mapInfo, const Car& car)
+{
+	const int kMaxNextWayPoints = 10;
+	vector<int> wayPointsIndex;
+	vector<double> wayPoints_x, wayPoints_y;
+	int nextWayPoint = ClosestWaypoint(car.x, car.y, mapInfo.waypoints_x, mapInfo.waypoints_y); // the first waypoint index of a waypoints segment
+	nextWayPoint = nextWayPoint - 4;
+
+	if (nextWayPoint < 0)
+	nextWayPoint = mapInfo.waypoints_x.size() + nextWayPoint;
+
+	for (int i = 0, nextwayPointIndex = nextWayPoint; i < kMaxNextWayPoints; i++)
+	{
+		wayPointsIndex.push_back(nextwayPointIndex);
+		wayPoints_x.push_back(mapInfo.waypoints_x[nextwayPointIndex]);
+		wayPoints_y.push_back(mapInfo.waypoints_y[nextwayPointIndex]);
+		nextwayPointIndex++;
+		nextwayPointIndex = nextwayPointIndex % (mapInfo.waypoints_x.size());
+	}
+	
+	return wayPointsIndex;
+}
+
+Car::State getNextState(const vector<vector<double>>& sensor, const Car& car)
+{
+	Car::State state;
+	
+	return state;
+}
+
+vector<double> realize_keep_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, int timestep, double current_point_s)
+{
+	double x, y, next_s;
+	double next_d = car.current_lane * kLanewidth - 2;
+	
+	tk::spline spline_sx, spline_sy;
+	getSplineForWayPoints(mapInfo, wayPointsIndexList, spline_sx, spline_sy, next_d);
+	
+	if (timestep < 200)
+	{
+		vector <double> s_start = {124.8336, 0, 0};
+		vector <double> s_end = {124.8336 + 43, 21.5, 0};
+		
+		vector<double> s_coeffs = JMT(s_start, s_end, 4);
+		
+		double t = timestep * 0.02;
+		next_s = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
+	}
+	else
+	{
+		const double dist_inc = 0.43; //21.5m/s, 48mph
+		next_s = current_point_s + dist_inc;
+	}
+	
+	x = spline_sx(next_s);
+	y = spline_sy(next_s);
+	
+	return {x, y, next_s};
+}
+
+vector<double> realize_change_left(const Car& car, double current_point_s)
+{
+	double x, y, next_s;
+	
+	return {x, y, next_s};
+}
+
+vector<double> realize_change_right(const Car& car, double current_point_s)
+{
+	double x, y, next_s;
+	
+	return {x, y, next_s};
+}
+
+vector<double> realize_next_state(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, int points_scheduled, double current_point_s)
+{
+	switch (car.state)
+	{
+		case Car::kKeepLane:
+			return realize_keep_lane(mapInfo, car, wayPointsIndexList, points_scheduled, current_point_s);
+			
+		case Car::kChangeLeft:
+			return realize_change_left(car, current_point_s);
+			
+		case Car::kChangeRight:
+			return realize_change_right(car, current_point_s);
+
+		default:
+			assert(false);
+	}
+}
+
 int main() {
   uWS::Hub h;
 
   // Load up map values for waypoint's x,y,s and d normalized normal vectors
-  vector<double> map_waypoints_x;
-  vector<double> map_waypoints_y;
-  vector<double> map_waypoints_s;
-  vector<double> map_waypoints_dx;
-  vector<double> map_waypoints_dy;
+	
+  MapInfo mapInfo;
 
   // Waypoint map to read from
   string map_file_ = "../../data/highway_map.csv";
@@ -402,20 +426,21 @@ int main() {
   	iss >> s;
   	iss >> d_x;
   	iss >> d_y;
-  	map_waypoints_x.push_back(x);
-  	map_waypoints_y.push_back(y);
-  	map_waypoints_s.push_back(s);
-  	map_waypoints_dx.push_back(d_x);
-  	map_waypoints_dy.push_back(d_y);
+  	mapInfo.waypoints_x.push_back(x);
+  	mapInfo.waypoints_y.push_back(y);
+  	mapInfo.waypoints_s.push_back(s);
+  	mapInfo.waypoints_dx.push_back(d_x);
+  	mapInfo.waypoints_dy.push_back(d_y);
   }
 	
   string log_file = "../../data/logger.csv";
   ofstream out_log(log_file.c_str(), ofstream::out);
   int timestep = 0;
-  double lane = 2; // {left:1, middle:2, right:3}
+  int lane = 2; // {left:1, middle:2, right:3}
   int ref_speed;
+  Car car = {0};
 	
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &out_log, &timestep, &ref_speed, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&mapInfo, &car, &out_log, &timestep, &ref_speed, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -434,13 +459,14 @@ int main() {
           // j[1] is the data JSON object
           
         	// Main car's localization Data
-          	double car_x = j[1]["x"];
-          	double car_y = j[1]["y"];
-          	double car_s = j[1]["s"];
-          	double car_d = j[1]["d"];
-          	double car_yaw = j[1]["yaw"];
-          	double car_speed = j[1]["speed"];
-			double theta = deg2rad(car_yaw);
+          	car.x = j[1]["x"];
+          	car.y = j[1]["y"];
+          	car.s = j[1]["s"];
+          	car.d = j[1]["d"];
+          	car.speed = j[1]["speed"];
+			double car_yaw = j[1]["yaw"];
+			car.theta = deg2rad(car_yaw);
+			car.current_lane = car.d / kLanewidth + 1;
 
           	// Previous path data given to the Planner
           	auto previous_path_x = j[1]["previous_path_x"];
@@ -451,83 +477,26 @@ int main() {
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
-//			cout << "car pos " << car_x << " " << car_y << " " << car_yaw << endl;
-
-			// find next waypoints list
-			const int kMaxNextWayPoints = 10;
-			vector<double> wayPoints_x, wayPoints_y;
-			int nextWayPoint = ClosestWaypoint(car_x, car_y, map_waypoints_x, map_waypoints_y); // the first waypoint index of a waypoints segment
-			nextWayPoint = nextWayPoint - 4;
-			static int previousIndex = nextWayPoint;
-			static double car_next_x = car_x;
-			static double car_next_y = car_y;
-			static double next_theta = theta;
-			if (nextWayPoint != previousIndex)
-			{
-				previousIndex = nextWayPoint;
-				car_next_x = car_x;
-				car_next_y = car_y;
-				next_theta = theta;
-			}
-
-			if (nextWayPoint < 0)
-				nextWayPoint = map_waypoints_x.size() + nextWayPoint;
 			
-			vector<int> wayPointsIndex;
-			for (int i = 0, nextwayPointIndex = nextWayPoint; i < kMaxNextWayPoints; i++)
-			{
-				wayPointsIndex.push_back(nextwayPointIndex);
-				wayPoints_x.push_back(map_waypoints_x[nextwayPointIndex]);
-				wayPoints_y.push_back(map_waypoints_y[nextwayPointIndex]);
-				nextwayPointIndex++;
-				nextwayPointIndex = nextwayPointIndex % (map_waypoints_x.size());
-			}
-
-////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////
+			vector<int> wayPointsIndexList = findNextWayPointsIndexList(mapInfo, car);
 			timestep ++;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-//			static bool change_lane = false;
-//			static bool next_direction = false;
-//
-//			static int next_lane = 3;
-//			int time = timeStep % 600;
-//			if (time == 0)
-//			{
-//				next_direction = ! next_direction;
-//				if (next_lane == 3)
-//					next_lane = 2;
-//				else
-//					next_lane = 3;
-//				
-//				change_lane = true;
-//			}
-//			
-//			if (change_lane)
-//				lane = changeLane(time, next_lane, next_direction);
-
-			
-//			cout << "chaning_lane " << chaning_lane << " car_d " << car_d << " current_lane " << current_lane << " next_lane " << lanes[next_index] <<  " time " << time << " lane "<< lane << endl;
-
-			
-			tk::spline xb_s, yb_s;
-//			vector<int> test = {178, 179, 180, 0};
-			getSplineForWayPoints(car_next_x, car_next_y, next_theta, wayPointsIndex, map_waypoints_x, map_waypoints_y, map_waypoints_s,
-							 map_waypoints_dx, map_waypoints_dy, xb_s, yb_s, lane);
-	
-			
+			// Behaviour
+			car.state = getNextState(sensor_fusion, car);
+		
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			vector<double> next_x_vals, next_y_vals;
 			double pos_x, pos_y;
 			int path_size = previous_path_x.size();
-			static int total_points = 0;
-			static double next_s = car_s;
+			static int points_scheduled = 0;
+			static double next_s = car.s;
 
 			if(path_size == 0)
 			{
-				pos_x = car_x;
-				pos_y = car_y;
+				pos_x = car.x;
+				pos_y = car.y;
 			}
 			else
 			{
@@ -543,11 +512,12 @@ int main() {
 			
 			for(int i = 0; i < 50 - path_size; i++)
 			{
-				total_points++;
-				next_s = getNextS(total_points, next_s);
-				double x = xb_s(next_s);
-				double y = yb_s(next_s);
-//				cout << " x " << x << " y " << y << endl;
+				points_scheduled++;
+				vector<double> next_point = realize_next_state(mapInfo, car, wayPointsIndexList, points_scheduled, next_s);
+				double x = next_point[0];
+				double y = next_point[1];
+				next_s += next_point[2];
+				
 				next_x_vals.push_back(x);
 				next_y_vals.push_back(y);
 				out_log << std::setprecision(9) << next_s << "," << x << "," << next_s << "," << y << endl;

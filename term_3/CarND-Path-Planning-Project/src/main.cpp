@@ -319,9 +319,13 @@ void getSplineForWayPoints(double x, double y, double theta, const vector<int>& 
 	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
 	for(auto index : wayPointsIndex)
 	{
-		lane_waypoints_x.push_back(map_waypoints_x[index] + next_d * map_waypoints_dx[index]);
-		lane_waypoints_y.push_back(map_waypoints_y[index] + next_d * map_waypoints_dy[index]);
-		double s = map_waypoints_s[index] + cycle * kMax_s;
+		double x = map_waypoints_x[index] + next_d * map_waypoints_dx[index];
+		double y = map_waypoints_y[index] + next_d * map_waypoints_dy[index];
+		lane_waypoints_x.push_back(x);
+		lane_waypoints_y.push_back(y);
+		// map lane's waypoints to frenet
+		auto frenet = getFrenet(x, y, theta, map_waypoints_x, map_waypoints_y);
+		double s = frenet[0] + cycle * kMax_s;
 		lane_waypoints_s.push_back(s);
 	}
 	
@@ -354,17 +358,17 @@ double getNextS(int timestep, double current_s)
 	double next_s;
 	const double dist_inc = 0.43;
 
-//	if (timestep < 400)
-//	{
-//		vector <double> s_start = {124.8336, 21.5, 0};
-//		vector <double> s_end = {124.8336 + 75, 21.5, 0};
-//		
-//		vector<double> s_coeffs = JMT(s_start, s_end, 3);
-//		
-//		double t = timestep * 0.02;
-//		next_s = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
-//	}
-//	else
+	if (timestep < 200)
+	{
+		vector <double> s_start = {124.8336, 0, 0};
+		vector <double> s_end = {124.8336 + 43, 21.5, 0};
+		
+		vector<double> s_coeffs = JMT(s_start, s_end, 4);
+		
+		double t = timestep * 0.02;
+		next_s = s_coeffs[0] + s_coeffs[1]*t + s_coeffs[2]*pow(t,2) + s_coeffs[3]*pow(t,3) + s_coeffs[4]*pow(t,4) + s_coeffs[5]*pow(t,5);
+	}
+	else
 		next_s = current_s + dist_inc;
 	
 	return next_s;

@@ -59,6 +59,8 @@ struct Car
 	double speed;
 	double theta;
 	int current_lane;
+	// each vehicle has [ id, x, y, vx, vy, s, d]
+	vector<vector<double>> sensor;
 };
 
 struct MapInfo
@@ -150,71 +152,59 @@ void getSplineForWayPoints(const MapInfo& mapInfo, const vector<int>& wayPointsI
 class Planner
 {
 public:
-	Planner();
+	Planner() {};
 	
-	void updateState(const vector<vector<double>>& sensor_fusion, const Car& car)
+	void init(double car_s) {m_current_s = car_s;}
+	
+	void updateState(const Car& car)
 	{
 		vector<string> states = {"KL", "LCL", "LCR"};
-		vector<double> costs;
-		double cost;
 		
-		for (auto test_state : states) {
-			cost = 0;
-			// create copy of our vehicle
-			Vehicle test_v = Vehicle(this->lane, this->s, this->v, this->a);
-			test_v.state = test_state;
-			test_v.realize_state(predictions);
-			// predict one step into future, for selected state
-			vector<int> test_v_state = test_v.state_at(1);
-			int pred_lane = test_v_state[0];
-			int pred_s = test_v_state[1];
-			int pred_v = test_v_state[2];
-			int pred_a = test_v_state[3];
-			//cout << "pred lane: " << pred_lane << " s: " << pred_s << " v: " << pred_v << " a: " << pred_a << endl;
+		if (car.current_lane == 1)
+			states.erase(states.begin() + 1);
+		else if (car.current_lane == 3)
+			states.erase(states.begin() + 2);
+		
+		string best_state;
+		double lowest_cost = 999999;
+
+		for (const auto state : states)
+		{
+			double cost = 0;
+			int target_lane = getLaneForState(state, car);
+			vector<double> vehicle = frontVehicle(car, target_lane, car.sensor);
+			double vehicle_s = vehicle[5];
+
+			cost += 10 * pow(target_lane - car.current_lane, 2);
+			cost += 20 * exp(-abs(vehicle_s - car.s));
+			// check collision and vehicle behind on other lanes?
 			
-			cout << "tested state: " << test_state << endl;
-			
-			// check for collisions
-			map<int, vector<vector<int> > >::iterator it = predictions.begin();
-			vector<vector<vector<int> > > in_front;
-			while(it != predictions.end())
+			// collision cost
+			if (cost < lowest_cost)
 			{
-				int index = it->first;
-				vector<vector<int>> v = it->second;
-				// check predictions one step in future as well
-				if ((v[1][0] == pred_lane) && (abs(v[1][1] - pred_s) <= L) && index != -1) {
-					cout << "collide with car: " << index << ", "
-					<< v[1][0] << " " << pred_lane << ", "
-					<< v[1][1] << " " << pred_s << endl;
-					cost += 1000;
-				}
-				it++;
+				lowest_cost = cost;
+				best_state = state;
 			}
-			
-			cost += 1*(10 - pred_v);
-			cost += 1*(pow(3 - pred_lane, 2));
-			cost += 10*(1 - exp(-abs(pred_lane - 3)/(300 - (double)pred_s)));
-			if (pred_lane < 0 || pred_lane > 3) {
-				cost += 1000;
-			}
-			
-			cout << "cost: " << cost << endl;
-			costs.push_back(cost);
+			cout << "state: " << state << " cost: " << cost << endl;
 		}
-		double min_cost = 99999;
-		int min_cost_index = 0;
-		for (int i = 0; i < costs.size(); i++) {
-			//cout << "cost[" << i << "]: " << costs[i] << endl;
-			if (costs[i] < min_cost) {
-				min_cost = costs[i];
-				min_cost_index = i;
-			}
-		}
+		cout << "best_state: " << best_state << endl;
 		
-		string state = states[min_cost_index];
-		cout << "next state: " << state << endl;
-		m_state = state;
-		m_vehicles = sensor_fusion;
+		if (m_state != best_state)
+		{
+			m_state = best_state;
+			m_accTimer = 0;
+			m_changeLaneTimer = 0;
+		}
+	}
+	
+	int getLaneForState(const string& state, const Car& car) const
+	{
+		if (m_state.compare("KL") == 0)
+			return car.current_lane;
+		else if (m_state.compare("LCL") == 0)
+			return car.current_lane - 1;
+		else
+			return car.current_lane + 1;
 	}
 	
 	double vehicleSpeed(const vector<double>& vehicle) const
@@ -224,20 +214,20 @@ public:
 		return sqrt(vx*vx + vy*vy);
 	}
 	
-	vector<double> frontVehicle(const Car& car, const vector<vector<double>>& vehicles) const
+	vector<double> frontVehicle(const Car& car, int lane, const vector<vector<double>>& vehicles) const
 	{
 		vector<double> frontVehicle;
 		for (auto vehicle : vehicles)
 		{
 			int vehicle_lane = vehicle[6] / kLanewidth + 1;
 			double vehicle_s = vehicle[5];
-			if (vehicle_lane == car.current_lane && vehicle_s > car.s)
+			if (vehicle_lane == lane && vehicle_s > car.s)
 				return vehicle;
 		}
 		return frontVehicle;
 	}
 	
-	int estimatedMaxTimeAllowToSlowDown(vector<double> frontVehicle, const Car& car) const
+	int estimatedMaxTimeAllowToSlowDown(const vector<double>& frontVehicle, const Car& car) const
 	{
 		double frontVehicleSpeed = vehicleSpeed(frontVehicle);
 		double distanceToFront = frontVehicle[5] - car.s;
@@ -257,8 +247,8 @@ public:
 		double distanceToTravel = kTargetSpeedMS * kMaxAccelerationTimeToTarget / 2.0; // estimated as half of the area of constant speed.
 		int timeToTarget = kMaxAccelerationTimeToTarget;
 		
-		vector<double> vehicle = frontVehicle(car, m_vehicles);
-		if (vehicle.empty()) // activate adaptive cruise control
+		vector<double> vehicle = frontVehicle(car, car.current_lane, car.sensor);
+		if (vehicle.empty())
 		{
 			double frontCarSpeed = vehicleSpeed(vehicle);
 			if (car.speed > frontCarSpeed)
@@ -271,7 +261,7 @@ public:
 		double error = abs(car.speed - targetSpeed);
 		bool acc_activated = (error > kMinSpeedError) ? true : false;
 		
-		if (acc_activated)
+		if (acc_activated) // activate adaptive cruise control
 		{
 			vector <double> s_start = {car.s, 0, 0};
 			vector <double> s_end = {car.s + distanceToTravel, targetSpeed, 0};
@@ -299,14 +289,14 @@ public:
 	vector<double> realize_change_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s, double target_d)
 	{
 		double x, y, next_s, next_d;
-		double distanceToTravel = kTargetSpeedMS * kMaxChangeLaneTime;
+		double s_diff = sqrt(pow(kTargetSpeedMS * kMaxChangeLaneTime, 2) - pow(kLanewidth, 2)); // estimation
 		double error = abs(car.d - target_d);
 		bool change_lane = (error > kMinLaneError) ? true : false;
 		
 		if (change_lane)
 		{
 			vector <double> s_start = {car.s, 0, 0};
-			vector <double> s_end = {car.s + distanceToTravel, kTargetSpeedMS, 0};
+			vector <double> s_end = {car.s + s_diff, kTargetSpeedMS, 0};
 			vector <double> d_start = {car.d, 0, 0};
 			vector <double> d_end = {target_d, 0, 0};
 			
@@ -370,13 +360,10 @@ public:
 	}
 	
 private:
-	bool m_acc_activated = false;
 	string m_state = "KL";
 	int m_accTimer = 0;
 	int m_changeLaneTimer = 0;
-	double m_current_s;
-	// each vehicle has [ id, x, y, vx, vy, s, d]
-	vector<vector<double>>& m_vehicles; 
+	double m_current_s = 0;
 };
 
 double distance(double x1, double y1, double x2, double y2)
@@ -386,7 +373,6 @@ double distance(double x1, double y1, double x2, double y2)
 
 int ClosestWaypoint(double x, double y, vector<double> maps_x, vector<double> maps_y)
 {
-	
 	double closestLen = 100000; //large number
 	int closestWaypoint = 0;
 	
@@ -581,7 +567,7 @@ int main() {
 	ofstream out_log(log_file.c_str(), ofstream::out);
 	int timestep = 0;
 	int lane = 2; // {left:1, middle:2, right:3}
-	Car car = {0};
+	Car car;
 	Planner planner;
 	
 	h.onMessage([&mapInfo, &car, &planner, &out_log, &timestep, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
@@ -620,12 +606,12 @@ int main() {
 					double end_path_d = j[1]["end_path_d"];
 					
 					// Sensor Fusion Data, a list of all other cars on the same side of the road.
-					auto sensor_fusion = j[1]["sensor_fusion"];
-					
+					vector<vector<double>> sensor = j[1]["sensor_fusion"];
+					car.sensor = sensor;
 					/////////////////////////////////////////////////////////////////////////////////////////
 					vector<int> wayPointsIndexList = findNextWayPointsIndexList(mapInfo, car);
 					timestep ++;
-					planner.updateState(sensor_fusion, car);
+					planner.updateState(car);
 					
 					////////////////////////////////////////////////////////////////////////////////////////////////////////////
 					
@@ -637,6 +623,7 @@ int main() {
 					{
 						pos_x = car.x;
 						pos_y = car.y;
+						planner.init(car.s);
 					}
 					else
 					{

@@ -42,13 +42,13 @@ string hasData(string s) {
 const int kLanewidth = 4;
 const int kControlFrequency = 50;
 const double kControlInterval = 1.0 / kControlFrequency;
-const double kTargetSpeedMS = 21.5; // m/s approcimately 48mph
+const double kTargetSpeedMS = 21.0; // m/s approcimately 48mph
 const int kMaxAccelerationTimeToTarget = 4; // seconds
 const int kMaxChangeLaneTime = 3; // seconds
 const int kMaxTimeStepToTarget = kMaxAccelerationTimeToTarget * kControlFrequency;
-const double kMinSpeedError = 0.5; // m/s
+const double kMinSpeedError = 0.01; // m/s
 const double kMinLaneError = 0.01; // d in meter
-const double kMinSafeDistance = 5; // meter
+const double kMinSafeDistance = 15; // meter
 
 struct Car
 {
@@ -173,7 +173,11 @@ public:
 			double cost = 0;
 			int target_lane = getLaneForState(state, car);
 			vector<double> vehicle = frontVehicle(car, target_lane, car.sensor);
-			double vehicle_s = vehicle[5];
+			double vehicle_s;
+			if (!vehicle.empty())
+				vehicle_s = vehicle[5];
+			else
+				vehicle_s = 999999;
 
 			cost += 10 * pow(target_lane - car.current_lane, 2);
 			cost += 20 * exp(-abs(vehicle_s - car.s));
@@ -185,9 +189,11 @@ public:
 				lowest_cost = cost;
 				best_state = state;
 			}
-			cout << "state: " << state << " cost: " << cost << endl;
+			//cout << "state: " << state << " cost: " << cost << endl;
 		}
-		cout << "best_state: " << best_state << endl;
+//		cout << "best_state: " << best_state << endl;
+		
+		best_state = "KL";
 		
 		if (m_state != best_state)
 		{
@@ -195,6 +201,7 @@ public:
 			m_accTimer = 0;
 			m_changeLaneTimer = 0;
 		}
+		timestep ++;
 	}
 	
 	int getLaneForState(const string& state, const Car& car) const
@@ -217,21 +224,20 @@ public:
 	vector<double> frontVehicle(const Car& car, int lane, const vector<vector<double>>& vehicles) const
 	{
 		vector<double> frontVehicle;
+		double closest_distance = 999999;
 		for (auto vehicle : vehicles)
 		{
 			int vehicle_lane = vehicle[6] / kLanewidth + 1;
 			double vehicle_s = vehicle[5];
-			if (vehicle_lane == lane && vehicle_s > car.s)
-				return vehicle;
+			double distance = vehicle_s - car.s;
+		
+			if (vehicle_lane == lane && distance < closest_distance && distance > 0)
+			{
+				closest_distance = distance;
+				frontVehicle = vehicle;
+			}
 		}
 		return frontVehicle;
-	}
-	
-	int estimatedMaxTimeAllowToSlowDown(const vector<double>& frontVehicle, const Car& car) const
-	{
-		double frontVehicleSpeed = vehicleSpeed(frontVehicle);
-		double distanceToFront = frontVehicle[5] - car.s;
-		return 2 * (distanceToFront - kMinSafeDistance) / (car.speed - frontVehicleSpeed);
 	}
 	
 	double generateNextJMTPoint(const vector<double>& start, const vector<double>& end, double T, double t)
@@ -244,38 +250,70 @@ public:
 	{
 		double x, y, next_s;
 		double targetSpeed = kTargetSpeedMS;
-		double distanceToTravel = kTargetSpeedMS * kMaxAccelerationTimeToTarget / 2.0; // estimated as half of the area of constant speed.
-		int timeToTarget = kMaxAccelerationTimeToTarget;
-		
+		double timeToTarget = kMaxAccelerationTimeToTarget;
+
+		bool too_close = false;
+		static bool previous_too_close = too_close;
 		vector<double> vehicle = frontVehicle(car, car.current_lane, car.sensor);
-		if (vehicle.empty())
+		if (!vehicle.empty())
 		{
 			double frontCarSpeed = vehicleSpeed(vehicle);
-			if (car.speed > frontCarSpeed)
+			double distanceToFront = vehicle[5] - car.s;
+
+			if (distanceToFront < 30)
 			{
-				targetSpeed = frontCarSpeed - kMinSpeedError;
-				timeToTarget = estimatedMaxTimeAllowToSlowDown(vehicle, car);
+				too_close = true;
+				targetSpeed = frontCarSpeed - 1;
+				timeToTarget = 6;//estimatedMaxTimeAllowToSlowDown(vehicle, car);
+				cout << "fron vehicle: speed " << targetSpeed << " distanceToFront " << distanceToFront << " timeToTarget " << timeToTarget << endl;
 			}
 		}
 		
-		double error = abs(car.speed - targetSpeed);
+		if (previous_too_close != too_close)
+		{
+			previous_too_close = too_close;
+			m_accTimer = 0;
+		}
+		double error = abs(car.speed*0.44704 - targetSpeed);
 		bool acc_activated = (error > kMinSpeedError) ? true : false;
+		
+		double next_v;
 		
 		if (acc_activated) // activate adaptive cruise control
 		{
-			vector <double> s_start = {car.s, 0, 0};
-			vector <double> s_end = {car.s + distanceToTravel, targetSpeed, 0};
+			static Car car_snapshot = car;
 			
+			if (m_accTimer == 0)
+			{
+				car_snapshot = car;
+				cout << "snapshot " << car_snapshot.speed * 0.44704 << endl;
+			}
+			
+			vector <double> s_start = {car_snapshot.speed * 0.44704, 0, 0};
+			vector <double> s_end = {targetSpeed, 0, 0};
 			m_accTimer ++;
-			double t = m_accTimer * kControlInterval;
-			next_s = current_s + generateNextJMTPoint(s_start, s_end, timeToTarget, t);
+
+			if (m_accTimer < timeToTarget*kControlFrequency)
+			{
+				double t = m_accTimer * kControlInterval;
+				next_v = generateNextJMTPoint(s_start, s_end, timeToTarget, t);
+				cout << "acc timer " << m_accTimer << " t " << t << " next_v " << next_v << " error " << error << endl;
+			}
+			else
+			{
+				m_accTimer = 0;
+				next_v = generateNextJMTPoint(s_start, s_end, timeToTarget, timeToTarget);
+				cout << "acc reset" << endl;
+			}
 		}
 		else
 		{
-			const double dist_inc = targetSpeed / kControlFrequency;
-			next_s = current_s + dist_inc;
-			m_accTimer = 0; // reset
+			m_accTimer = 0;
+			next_v = targetSpeed;
+			cout << "constant speed" << endl;
 		}
+		const double dist_inc = next_v / kControlFrequency;
+		next_s = current_s + dist_inc;
 		
 		double next_d = car.current_lane * kLanewidth - 2;
 		tk::spline spline_sx, spline_sy;
@@ -324,6 +362,7 @@ public:
 	
 	vector<double> realize_change_left(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
 	{
+		cout << "lane change left!" << endl;
 		assert(car.current_lane > 1); // must be at least in middle lane to change left
 		double target_d = (car.current_lane - 1) * kLanewidth - 2;
 		return realize_change_lane(mapInfo, car, wayPointsIndexList, current_s, target_d);
@@ -331,6 +370,7 @@ public:
 	
 	vector<double> realize_change_right(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
 	{
+		cout << "lane change right!" << endl;
 		const int next_lane = car.current_lane + 1;
 		assert(next_lane < 4); // must be at most at right most lane.
 		double target_d = next_lane * kLanewidth - 2;
@@ -356,6 +396,7 @@ public:
 			assert(false);
 		
 		m_current_s = result[2];
+
 		return result;
 	}
 	
@@ -364,6 +405,7 @@ private:
 	int m_accTimer = 0;
 	int m_changeLaneTimer = 0;
 	double m_current_s = 0;
+	int timestep = 0;
 };
 
 double distance(double x1, double y1, double x2, double y2)
@@ -565,12 +607,11 @@ int main() {
 	
 	string log_file = "../../data/logger.csv";
 	ofstream out_log(log_file.c_str(), ofstream::out);
-	int timestep = 0;
 	int lane = 2; // {left:1, middle:2, right:3}
 	Car car;
 	Planner planner;
 	
-	h.onMessage([&mapInfo, &car, &planner, &out_log, &timestep, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+	h.onMessage([&mapInfo, &car, &planner, &out_log, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 		// "42" at the start of the message means there's a websocket message event.
 		// The 4 signifies a websocket message
 		// The 2 signifies a websocket event
@@ -610,7 +651,7 @@ int main() {
 					car.sensor = sensor;
 					/////////////////////////////////////////////////////////////////////////////////////////
 					vector<int> wayPointsIndexList = findNextWayPointsIndexList(mapInfo, car);
-					timestep ++;
+					
 					planner.updateState(car);
 					
 					////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -647,6 +688,7 @@ int main() {
 						next_x_vals.push_back(x);
 						next_y_vals.push_back(y);
 						out_log << std::setprecision(9) << s << "," << x << "," << s << "," << y << endl;
+//						cout << std::setprecision(9) << "s: " << s << " x: " << x << " y: " << y << endl;
 					}
 					
 					// send json message

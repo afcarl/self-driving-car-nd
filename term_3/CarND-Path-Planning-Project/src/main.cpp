@@ -345,7 +345,7 @@ public:
 			
 			cost += 3 * pow(target_lane - car.current_lane, 2); //penalize lane changing
 			cost += 25 * exp(-((front_vehicle_s - car.s) - 15) / 10); //reward lane change if target lane front part is clear
-			cost += 10 * exp(-((car.s - back_vehicle_s) - 15) / 20); //reward lane change if target lane back part is clear
+			cost += 30 * exp(-((car.s - back_vehicle_s) - 15) / 20); //reward lane change if target lane back part is clear
 			
 			// check collision and vehicle behind on other lanes
 			double speed_diff = !back_vehicle.empty() ? vehicleSpeed(back_vehicle) - car.speed : -1;

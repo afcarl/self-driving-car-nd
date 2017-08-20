@@ -42,10 +42,9 @@ string hasData(string s) {
 const int kLanewidth = 4;
 const int kControlFrequency = 50;
 const double kControlInterval = 1.0 / kControlFrequency;
-const double kTargetSpeedMS = 21.0; // m/s approcimately 48mph
+const double kTargetSpeedMS = 20.5; // m/s approcimately 48mph
 const int kMaxAccelerationTimeToTarget = 4; // seconds
-const int kMaxChangeLaneTime = 4; // seconds
-const int kMaxTimeStepToTarget = kMaxAccelerationTimeToTarget * kControlFrequency;
+const int kMaxChangeLaneTime = 3; // seconds
 const double kMinSpeedError = 0.01; // m/s
 const double kMinLaneError = 0.00001; // d in meter
 const double kMinSafeDistance = 15; // meter
@@ -101,338 +100,6 @@ vector<double> JMT(vector< double> start, vector <double> end, double T)
 	
 	return result;
 }
-
-void getSplineForWayPoints(const MapInfo& mapInfo, const vector<int>& wayPointsIndex, tk::spline& xb_s, tk::spline& yb_s, double next_d)
-{
-	static int cycle = 0;
-	static int previous_last_index = -1;
-	// The max s value before wrapping around the track back to 0
-	const double kMax_s = 6945.554;
-	
-	// detecting wrap around
-	if (previous_last_index != wayPointsIndex.back())
-	{
-		previous_last_index = wayPointsIndex.back();
-		if (wayPointsIndex.back() == 0)
-			cycle ++;
-	}
-	
-	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
-	for(auto index : wayPointsIndex)
-	{
-		double x = mapInfo.waypoints_x[index] + next_d * mapInfo.waypoints_dx[index];
-		double y = mapInfo.waypoints_y[index] + next_d * mapInfo.waypoints_dy[index];
-		lane_waypoints_x.push_back(x);
-		lane_waypoints_y.push_back(y);
-		// FIXME map lane's waypoints to frenet, using dx, dy
-		//		auto frenet = getFrenet(x, y, theta, mapInfo.waypoints_x, mapInfo.waypoints_y);
-		//		double s = frenet[0] + cycle * kMax_s;
-		double s = mapInfo.waypoints_s[index] + cycle * kMax_s;
-		lane_waypoints_s.push_back(s);
-	}
-	
-	// correcting s value for previous cycle points
-	if (cycle > 0)
-	{
-		int zero_index = std::find(wayPointsIndex.begin(), wayPointsIndex.end(), 0) - wayPointsIndex.begin();
-		if (zero_index != wayPointsIndex.size()) //found
-		{
-			for (int i = 0; i < zero_index; i++)
-			{
-				lane_waypoints_s[i] -= kMax_s;
-			}
-		}
-	}
-	
-	// build spline for interpolation
-	xb_s.set_points(lane_waypoints_s, lane_waypoints_x);
-	yb_s.set_points(lane_waypoints_s, lane_waypoints_y);
-}
-
-class Planner
-{
-public:
-	Planner() {};
-	
-	void init(double car_s) {m_current_s = car_s;}
-	
-	void updateState(const Car& car)
-	{
-		vector<string> states = {"KL", "LCL", "LCR"};
-		
-		if (car.current_lane == 1)
-			states.erase(states.begin() + 1);
-		else if (car.current_lane == 3)
-			states.erase(states.begin() + 2);
-		
-		string best_state;
-		double lowest_cost = 999999;
-
-		for (const auto state : states)
-		{
-			double cost = 0;
-			int target_lane = getLaneForState(state, car);
-			vector<double> vehicle = frontVehicle(car, target_lane, car.sensor);
-			double vehicle_s;
-			if (!vehicle.empty())
-				vehicle_s = vehicle[5];
-			else
-				vehicle_s = 999999;
-			
-			cost += 10 * pow(target_lane - car.current_lane, 2);
-			cost += 10 * exp(-((vehicle_s - car.s) - 50) / 20);
-			
-			// check collision and vehicle behind on other lanes?
-			
-			// collision cost
-			if (cost < lowest_cost)
-			{
-				lowest_cost = cost;
-				best_state = state;
-			}
-//			cout << "state: " << state << " cost: " << cost << endl;
-		}
-		
-		if (m_state != best_state && m_changeLaneTimer == 0)
-		{
-			cout << "state changed: " << best_state << endl;
-			m_state = best_state;
-			m_accTimer = 0;
-			m_changeLaneTimer = 0;
-		}
-		timestep ++;
-	}
-	
-	int getLaneForState(const string& state, const Car& car) const
-	{
-		if (state.compare("KL") == 0)
-			return car.current_lane;
-		else if (state.compare("LCL") == 0)
-			return car.current_lane - 1;
-		else
-			return car.current_lane + 1;
-	}
-	
-	double vehicleSpeed(const vector<double>& vehicle) const
-	{
-		double vx = vehicle[3];
-		double vy = vehicle[4];
-		return sqrt(vx*vx + vy*vy);
-	}
-	
-	vector<double> frontVehicle(const Car& car, int lane, const vector<vector<double>>& vehicles) const
-	{
-		vector<double> frontVehicle;
-		double closest_distance = 999999;
-		for (auto vehicle : vehicles)
-		{
-			int vehicle_lane = vehicle[6] / kLanewidth + 1;
-			double vehicle_s = vehicle[5];
-			double distance = vehicle_s - car.s;
-		
-			if (vehicle_lane == lane && distance < closest_distance && distance > 0)
-			{
-				closest_distance = distance;
-				frontVehicle = vehicle;
-			}
-		}
-		return frontVehicle;
-	}
-	
-	double generateNextJMTPoint(const vector<double>& start, const vector<double>& end, double T, double t)
-	{
-		vector<double> coeffs = JMT(start, end, T);
-		return coeffs[0] + coeffs[1]*t + coeffs[2]*pow(t,2) + coeffs[3]*pow(t,3) + coeffs[4]*pow(t,4) + coeffs[5]*pow(t,5);
-	}
-	
-	vector<double> realize_keep_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
-	{
-		cout << "keep lane! " << "timestep " << timestep <<  endl;
-
-		double x, y, next_s;
-		double targetSpeed = kTargetSpeedMS;
-		double timeToTarget = kMaxAccelerationTimeToTarget;
-
-		bool too_close = false;
-		static bool previous_too_close = too_close;
-		vector<double> vehicle = frontVehicle(car, car.current_lane, car.sensor);
-		if (!vehicle.empty())
-		{
-			double frontCarSpeed = vehicleSpeed(vehicle);
-			double distanceToFront = vehicle[5] - car.s;
-
-			if (distanceToFront < 30)
-			{
-				too_close = true;
-				targetSpeed = frontCarSpeed - 1;
-				timeToTarget = 6;
-//				cout << "fron vehicle: speed " << targetSpeed << " distanceToFront " << distanceToFront << " timeToTarget " << timeToTarget << endl;
-			}
-		}
-		
-		if (previous_too_close != too_close) // on change
-		{
-			previous_too_close = too_close;
-			m_accTimer = 0;
-		}
-		double error = abs(car.speed*0.44704 - targetSpeed);
-		bool acc_activated = (error > kMinSpeedError) ? true : false;
-		
-		double next_v;
-		
-		if (acc_activated) // activate adaptive cruise control
-		{
-//			static Car car_snapshot = car;
-			static double last_v = m_current_v;
-
-			if (m_accTimer == 0)
-			{
-				last_v = m_current_v;
-			}
-			
-			vector <double> s_start = {last_v, 0, 0};
-			vector <double> s_end = {targetSpeed, 0, 0};
-			m_accTimer ++;
-
-			if (m_accTimer < timeToTarget*kControlFrequency)
-			{
-				double t = m_accTimer * kControlInterval;
-				next_v = generateNextJMTPoint(s_start, s_end, timeToTarget, t);
-				cout << "acc timer " << m_accTimer << " t " << t << " next_v " << next_v << " error " << error << endl;
-			}
-			else
-			{
-				m_accTimer = 0;
-				next_v = generateNextJMTPoint(s_start, s_end, timeToTarget, timeToTarget);
-				cout << "acc reset" << endl;
-			}
-		}
-		else
-		{
-			m_accTimer = 0;
-			next_v = targetSpeed;
-			cout << "constant speed" << endl;
-		}
-		const double dist_inc = next_v / kControlFrequency;
-		next_s = current_s + dist_inc;
-		
-		double next_d = car.current_lane * kLanewidth - 2;
-		m_current_d = next_d;
-		m_current_v = next_v;
-		tk::spline spline_sx, spline_sy;
-		cout << "next_d in keep lane " << next_d << endl;
-		getSplineForWayPoints(mapInfo, wayPointsIndexList, spline_sx, spline_sy, next_d);
-		
-		x = spline_sx(next_s);
-		y = spline_sy(next_s);
-		return {x, y, next_s};
-	}
-	
-	vector<double> realize_change_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s, double target_d)
-	{
-		double x, y, next_s, next_d;
-		double s_diff = 75;//sqrt(pow(kTargetSpeedMS * kMaxChangeLaneTime, 2) - pow(kLanewidth, 2)); // estimation
-		double error = abs(m_current_d - target_d);
-		bool change_lane = (error > kMinLaneError) ? true : false;
-		
-		if (change_lane)
-		{
-			static double last_s = m_current_s;
-			static double last_d = m_current_d;
-			static double last_v = m_current_v;
-
-			if (m_changeLaneTimer == 0)
-			{
-				last_s = m_current_s;
-				last_d = m_current_d;
-				last_v = m_current_v;
-			}
-			
-			vector <double> s_start = {last_s, last_v, 0};
-			vector <double> s_end = {last_s + s_diff, kTargetSpeedMS, 0};
-			vector <double> d_start = {last_d, 0, 0};
-			vector <double> d_end = {target_d, 0, 0};
-			
-			m_changeLaneTimer ++;
-			double t = m_changeLaneTimer * kControlInterval;
-			next_s = generateNextJMTPoint(s_start, s_end, kMaxChangeLaneTime, t);
-			next_d = generateNextJMTPoint(d_start, d_end, kMaxChangeLaneTime, t);
-		}
-		else
-		{
-			const double dist_inc = kTargetSpeedMS / kControlFrequency;
-			next_s = current_s + dist_inc;
-			next_d = car.current_lane * kLanewidth - 2;
-			m_changeLaneTimer = 0;
-			m_state = "KL";
-			m_current_v = kTargetSpeedMS;
-		}
-		
-		cout << "m_changeLaneTimer " << m_changeLaneTimer << " next_s " << next_s << " next_d " << next_d << " error " << error  << " target_d " << target_d << endl;
-		tk::spline spline_sx, spline_sy;
-		getSplineForWayPoints(mapInfo, wayPointsIndexList, spline_sx, spline_sy, next_d);
-		
-		m_current_d = next_d;
-
-		x = spline_sx(next_s);
-		y = spline_sy(next_s);
-		
-		return {x, y, next_s};
-	}
-	
-	vector<double> realize_change_left(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
-	{
-		cout << "lane change left!" << "timestep " << timestep << endl;
-//		assert(car.current_lane > 1); // must be at least in middle lane to change left
-		if (m_changeLaneTimer == 0)
-			m_target_d = (car.current_lane - 1) * kLanewidth - 2;
-//		else
-//			m_target_d = car.current_lane * kLanewidth - 2;
-		return realize_change_lane(mapInfo, car, wayPointsIndexList, current_s, m_target_d);
-	}
-	
-	vector<double> realize_change_right(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
-	{
-		cout << "lane change right!" << "timestep " << timestep << endl;
-//		assert(car.current_lane < 3); // must be at most at right most lane.
-		if (m_changeLaneTimer == 0)
-			m_target_d = (car.current_lane + 1) * kLanewidth - 2;
-		return realize_change_lane(mapInfo, car, wayPointsIndexList, current_s, m_target_d);
-	}
-	
-	vector<double> realize_next_state(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList)
-	{
-		vector<double> result;
-		if (m_state.compare("KL") == 0)
-		{
-			result = realize_keep_lane(mapInfo, car, wayPointsIndexList, m_current_s);
-		}
-		else if (m_state.compare("LCL") == 0)
-		{
-			result = realize_change_left(mapInfo, car, wayPointsIndexList, m_current_s);
-		}
-		else if (m_state.compare("LCR") == 0)
-		{
-			result = realize_change_right(mapInfo, car, wayPointsIndexList, m_current_s);
-		}
-		else
-			assert(false);
-		
-		m_current_s = result[2];
-
-		return result;
-	}
-	
-private:
-	string m_state = "KL";
-	double m_target_d;
-	int m_accTimer = 0;
-	int m_changeLaneTimer = 0;
-	double m_current_s = 0;
-	double m_current_d = 0;
-	double m_current_v = 0;
-	int timestep = 0;
-};
 
 double distance(double x1, double y1, double x2, double y2)
 {
@@ -598,6 +265,331 @@ vector<int> findNextWayPointsIndexList(const MapInfo& mapInfo, const Car& car)
 	return wayPointsIndex;
 }
 
+void getSplineForWayPoints(const MapInfo& mapInfo, const vector<int>& wayPointsIndex, tk::spline& xb_s, tk::spline& yb_s, double next_d)
+{
+	static int cycle = 0;
+	static int previous_last_index = -1;
+	// The max s value before wrapping around the track back to 0
+	const double kMax_s = 6945.554;
+	
+	// detecting wrap around
+	if (previous_last_index != wayPointsIndex.back())
+	{
+		previous_last_index = wayPointsIndex.back();
+		if (wayPointsIndex.back() == 0)
+			cycle ++;
+	}
+	
+	vector<double> lane_waypoints_x, lane_waypoints_y, 	lane_waypoints_s;
+	for(auto index : wayPointsIndex)
+	{
+		double x = mapInfo.waypoints_x[index] + next_d * mapInfo.waypoints_dx[index];
+		double y = mapInfo.waypoints_y[index] + next_d * mapInfo.waypoints_dy[index];
+		lane_waypoints_x.push_back(x);
+		lane_waypoints_y.push_back(y);
+		// FIXME map lane's waypoints to frenet, using dx, dy
+//		double theta = atan2(mapInfo.waypoints_dx[index],mapInfo.waypoints_dy[index]);
+//		auto frenet = getFrenet(x, y, theta, mapInfo.waypoints_x, mapInfo.waypoints_y);
+//		double s = frenet[0] + cycle * kMax_s;
+		double s = mapInfo.waypoints_s[index] + cycle * kMax_s;
+		lane_waypoints_s.push_back(s);
+	}
+	
+	// correcting s value for previous cycle points
+	if (cycle > 0)
+	{
+		int zero_index = std::find(wayPointsIndex.begin(), wayPointsIndex.end(), 0) - wayPointsIndex.begin();
+		if (zero_index != wayPointsIndex.size()) //found
+		{
+			for (int i = 0; i < zero_index; i++)
+			{
+				lane_waypoints_s[i] -= kMax_s;
+			}
+		}
+	}
+	
+	// build spline for interpolation
+	xb_s.set_points(lane_waypoints_s, lane_waypoints_x);
+	yb_s.set_points(lane_waypoints_s, lane_waypoints_y);
+}
+
+class Planner
+{
+public:
+	Planner() {};
+	
+	void init(double car_s) {m_current_s = car_s;}
+	
+	void updateState(const Car& car)
+	{
+		vector<string> states = {"KL", "LCL", "LCR"};
+		
+		if (car.current_lane == 1)
+			states.erase(states.begin() + 1);
+		else if (car.current_lane == 3)
+			states.erase(states.begin() + 2);
+		
+		string best_state;
+		double lowest_cost = 999999;
+
+		for (const auto state : states)
+		{
+			double cost = 0;
+			int target_lane = getLaneForState(state, car);
+			vector<double> front_vehicle = getVehicle(car, target_lane, true);
+			vector<double> back_vehicle = getVehicle(car, target_lane, false);
+
+			double front_vehicle_s, back_vehicle_s;
+			front_vehicle_s = !front_vehicle.empty() ? front_vehicle[5] : 999999;
+			back_vehicle_s = !back_vehicle.empty() && (target_lane != car.current_lane)? back_vehicle[5] : -999999;
+			
+			cost += 3 * pow(target_lane - car.current_lane, 2); //penalize lane changing
+			cost += 25 * exp(-((front_vehicle_s - car.s) - 15) / 10); //reward lane change if target lane front part is clear
+			cost += 10 * exp(-((car.s - back_vehicle_s) - 15) / 20); //reward lane change if target lane back part is clear
+			
+			// check collision and vehicle behind on other lanes
+			double speed_diff = !back_vehicle.empty() ? vehicleSpeed(back_vehicle) - car.speed : -1;
+			double collision_cost = speed_diff > 0 && (target_lane != car.current_lane) ? 100 * pow(speed_diff, 2) : 0;
+			cost += collision_cost;
+			
+			// collision cost
+			if (cost < lowest_cost)
+			{
+				lowest_cost = cost;
+				best_state = state;
+			}
+//			cout << "state: " << state << " cost: " << cost << endl;
+		}
+		
+		if (m_state != best_state && m_changeLaneTimer == 0)
+		{
+			cout << "state changed: " << best_state << endl;
+			m_state = best_state;
+			m_accTimer = 0;
+			m_changeLaneTimer = 0;
+		}
+		timestep ++;
+	}
+	
+	int getLaneForState(const string& state, const Car& car) const
+	{
+		if (state.compare("KL") == 0)
+			return car.current_lane;
+		else if (state.compare("LCL") == 0)
+			return car.current_lane - 1;
+		else
+			return car.current_lane + 1;
+	}
+	
+	double vehicleSpeed(const vector<double>& vehicle) const
+	{
+		double vx = vehicle[3];
+		double vy = vehicle[4];
+		return sqrt(vx*vx + vy*vy);
+	}
+	
+	vector<double> getVehicle(const Car& car, int lane, bool front) const
+	{
+		vector<double> target_vehicle;
+		double closest_distance = 999999;
+		for (auto vehicle : car.sensor)
+		{
+			int vehicle_lane = vehicle[6] / kLanewidth + 1;
+			double vehicle_s = vehicle[5];
+			double distance = vehicle_s - car.s;
+			
+			bool predicate = front ? distance > 0 : distance < 0;
+			if (vehicle_lane == lane && predicate)
+			{
+				if (abs(distance) < closest_distance)
+				{
+					closest_distance = distance;
+					target_vehicle = vehicle;
+				}
+			}
+		}
+		return target_vehicle;
+	}
+
+	double generateNextJMTPoint(const vector<double>& start, const vector<double>& end, double T, double t)
+	{
+		vector<double> coeffs = JMT(start, end, T);
+		return coeffs[0] + coeffs[1]*t + coeffs[2]*pow(t,2) + coeffs[3]*pow(t,3) + coeffs[4]*pow(t,4) + coeffs[5]*pow(t,5);
+	}
+	
+	vector<double> realize_keep_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
+	{
+		cout << "keep lane! " << "timestep " << timestep <<  endl;
+
+		double x, y, next_s, next_v;
+		double targetSpeed = kTargetSpeedMS;
+		double timeToTarget = kMaxAccelerationTimeToTarget;
+
+		bool too_close = false;
+		static bool previous_too_close = too_close;
+		vector<double> vehicle = getVehicle(car, car.current_lane, true);
+		if (!vehicle.empty())
+		{
+			double frontCarSpeed = vehicleSpeed(vehicle);
+			double distanceToFront = vehicle[5] - car.s;
+
+			if (distanceToFront < 30)
+			{
+				too_close = true;
+				targetSpeed = frontCarSpeed - 2;
+				timeToTarget = 3;
+			}
+		}
+		
+		if (previous_too_close != too_close) // on change
+		{
+			previous_too_close = too_close;
+			m_accTimer = 0;
+		}
+		double error = abs(m_current_v - targetSpeed);
+		bool acc_activated = (error > kMinSpeedError) ? true : false;
+		
+		if (acc_activated) // activate adaptive cruise control
+		{
+			static double last_v = m_current_v;
+			static double last_target_speed = targetSpeed;
+
+			if (m_accTimer == 0)
+			{
+				last_v = m_current_v;
+				last_target_speed = targetSpeed;
+			}
+			
+			vector <double> s_start = {last_v, 0, 0};
+			vector <double> s_end = {targetSpeed, 0, 0};
+			m_accTimer ++;
+
+			double t = m_accTimer * kControlInterval;
+			next_v = generateNextJMTPoint(s_start, s_end, timeToTarget, t);
+			cout << "acc timer " << m_accTimer << " t " << t << " next_v " << next_v << " error " << error << endl;
+		}
+		else
+		{
+			m_accTimer = 0;
+			next_v = targetSpeed;
+			cout << "constant speed" << endl;
+		}
+		const double dist_inc = next_v / kControlFrequency;
+		next_s = current_s + dist_inc;
+		
+		double next_d = car.current_lane * kLanewidth - 2;
+		m_current_d = next_d;
+		m_current_v = next_v;
+		tk::spline spline_sx, spline_sy;
+		getSplineForWayPoints(mapInfo, wayPointsIndexList, spline_sx, spline_sy, next_d);
+		
+		x = spline_sx(next_s);
+		y = spline_sy(next_s);
+		return {x, y, next_s};
+	}
+	
+	vector<double> realize_change_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s, double target_d)
+	{
+		double x, y, next_s, next_d;
+		double s_diff = kMaxChangeLaneTime * kTargetSpeedMS - 5;
+		double error = abs(m_current_d - target_d);
+		bool change_lane = (error > kMinLaneError) ? true : false;
+		
+		if (change_lane)
+		{
+			static double last_s = m_current_s;
+			static double last_d = m_current_d;
+			static double last_v = m_current_v;
+
+			if (m_changeLaneTimer == 0)
+			{
+				last_s = m_current_s;
+				last_d = m_current_d;
+				last_v = m_current_v;
+			}
+			
+			vector <double> s_start = {last_s, last_v, 0};
+			vector <double> s_end = {last_s + s_diff, last_v, 0};
+			vector <double> d_start = {last_d, 0, 0};
+			vector <double> d_end = {target_d, 0, 0};
+			
+			m_changeLaneTimer ++;
+			double t = m_changeLaneTimer * kControlInterval;
+			next_s = generateNextJMTPoint(s_start, s_end, kMaxChangeLaneTime, t);
+			next_d = generateNextJMTPoint(d_start, d_end, kMaxChangeLaneTime, t);
+		}
+		else
+		{
+			const double dist_inc = kTargetSpeedMS / kControlFrequency;
+			next_s = current_s + dist_inc;
+			next_d = car.current_lane * kLanewidth - 2;
+			m_changeLaneTimer = 0;
+			m_state = "KL";
+		}
+		
+		cout << "m_changeLaneTimer " << m_changeLaneTimer << " next_s " << next_s << " next_d " << next_d << " error " << error  << " target_d " << target_d << endl;
+		tk::spline spline_sx, spline_sy;
+		getSplineForWayPoints(mapInfo, wayPointsIndexList, spline_sx, spline_sy, next_d);
+		
+		m_current_d = next_d;
+
+		x = spline_sx(next_s);
+		y = spline_sy(next_s);
+		
+		return {x, y, next_s};
+	}
+	
+	vector<double> realize_change_left(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
+	{
+		cout << "lane change left!" << "timestep " << timestep << endl;
+		if (m_changeLaneTimer == 0)
+			m_target_d = (car.current_lane - 1) * kLanewidth - 2;
+		
+		return realize_change_lane(mapInfo, car, wayPointsIndexList, current_s, m_target_d);
+	}
+	
+	vector<double> realize_change_right(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s)
+	{
+		cout << "lane change right!" << "timestep " << timestep << endl;
+		if (m_changeLaneTimer == 0)
+			m_target_d = (car.current_lane + 1) * kLanewidth - 2;
+		
+		return realize_change_lane(mapInfo, car, wayPointsIndexList, current_s, m_target_d);
+	}
+	
+	vector<double> realize_next_state(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList)
+	{
+		vector<double> result;
+		if (m_state.compare("KL") == 0)
+		{
+			result = realize_keep_lane(mapInfo, car, wayPointsIndexList, m_current_s);
+		}
+		else if (m_state.compare("LCL") == 0)
+		{
+			result = realize_change_left(mapInfo, car, wayPointsIndexList, m_current_s);
+		}
+		else if (m_state.compare("LCR") == 0)
+		{
+			result = realize_change_right(mapInfo, car, wayPointsIndexList, m_current_s);
+		}
+		else
+			assert(false);
+		
+		m_current_s = result[2];
+
+		return result;
+	}
+	
+private:
+	string m_state = "KL";
+	double m_target_d;
+	int m_accTimer = 0;
+	int m_changeLaneTimer = 0;
+	double m_current_s = 0;
+	double m_current_d = 0;
+	double m_current_v = 0;
+	int timestep = 0;
+};
 
 int main() {
 	uWS::Hub h;

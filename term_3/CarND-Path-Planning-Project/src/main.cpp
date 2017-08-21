@@ -330,7 +330,7 @@ public:
 			states.erase(states.begin() + 2);
 		
 		string best_state;
-		double lowest_cost = 999999;
+		double lowest_cost = 9999999999;
 
 		for (const auto state : states)
 		{
@@ -343,11 +343,14 @@ public:
 			front_vehicle_s = !front_vehicle.empty() ? front_vehicle[5] : 999999;
 			back_vehicle_s = !back_vehicle.empty() && (target_lane != car.current_lane)? back_vehicle[5] : -999999;
 			
-			cost += 3 * pow(target_lane - car.current_lane, 2); //penalize lane changing
+			cost += 3 * pow(target_lane - car.current_lane, 2); //penalize lane changing in general
 			cost += 25 * exp(-((front_vehicle_s - car.s) - 15) / 10); //reward lane change if target lane front part is clear
-			cost += 30 * exp(-((car.s - back_vehicle_s) - 15) / 20); //reward lane change if target lane back part is clear
+			cost += 2 * exp(-((car.s - back_vehicle_s) - 15) / 0.8); //reward lane change if target lane back part is clear
 			
-			// check collision and vehicle behind on other lanes
+			// don;t change lane if there will be collision with car in the front
+			cost += !front_vehicle.empty() && (target_lane != car.current_lane) && (car.speed - vehicleSpeed(front_vehicle)) > (front_vehicle_s - car.s) ? 100000 : 0;
+
+			// don;t change lane if there will be collision with car behind
 			double speed_diff = !back_vehicle.empty() ? vehicleSpeed(back_vehicle) - car.speed : -1;
 			double collision_cost = speed_diff > 0 && (target_lane != car.current_lane) ? 100 * pow(speed_diff, 2) : 0;
 			cost += collision_cost;
@@ -433,11 +436,11 @@ public:
 			double frontCarSpeed = vehicleSpeed(vehicle);
 			double distanceToFront = vehicle[5] - car.s;
 
-			if (distanceToFront < 30)
+			if (distanceToFront < 35)
 			{
 				too_close = true;
-				targetSpeed = frontCarSpeed - 2;
-				timeToTarget = 3;
+				targetSpeed = frontCarSpeed - 3;
+				timeToTarget = 4;
 			}
 		}
 		
@@ -654,6 +657,7 @@ int main() {
 					car.s = j[1]["s"];
 					car.d = j[1]["d"];
 					car.speed = j[1]["speed"];
+					car.speed *= 0.44704;
 					double car_yaw = j[1]["yaw"];
 					car.theta = deg2rad(car_yaw);
 					car.current_lane = car.d / kLanewidth + 1;
@@ -706,8 +710,8 @@ int main() {
 						
 						next_x_vals.push_back(x);
 						next_y_vals.push_back(y);
-						out_log << std::setprecision(9) << s << "," << x << "," << s << "," << y << endl;
-						cout << std::setprecision(9) << "s: " << s << " x: " << x << " y: " << y << endl;
+//						out_log << std::setprecision(9) << s << "," << x << "," << s << "," << y << endl;
+//						cout << std::setprecision(9) << "s: " << s << " x: " << x << " y: " << y << endl;
 					}
 					
 					// send json message

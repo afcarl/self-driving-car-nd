@@ -44,7 +44,7 @@ const int kControlFrequency = 50;
 const double kControlInterval = 1.0 / kControlFrequency;
 const double kTargetSpeedMS = 20.5; // m/s approcimately 48mph
 const int kMaxAccelerationTimeToTarget = 4; // seconds
-const int kMaxChangeLaneTime = 3; // seconds
+const int kMaxChangeLaneTime = 4; // seconds
 const double kMinSpeedError = 0.01; // m/s
 const double kMinLaneError = 0.00001; // d in meter
 const double kMinSafeDistance = 15; // meter
@@ -491,7 +491,6 @@ public:
 	vector<double> realize_change_lane(const MapInfo& mapInfo, const Car& car, const vector<int>& wayPointsIndexList, double current_s, double target_d)
 	{
 		double x, y, next_s, next_d;
-		double s_diff = kMaxChangeLaneTime * kTargetSpeedMS - 5;
 		double error = abs(m_current_d - target_d);
 		bool change_lane = (error > kMinLaneError) ? true : false;
 		
@@ -507,6 +506,8 @@ public:
 				last_d = m_current_d;
 				last_v = m_current_v;
 			}
+			
+			double s_diff = kMaxChangeLaneTime * last_v;
 			
 			vector <double> s_start = {last_s, last_v, 0};
 			vector <double> s_end = {last_s + s_diff, last_v, 0};

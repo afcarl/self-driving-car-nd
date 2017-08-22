@@ -344,13 +344,13 @@ public:
 			back_vehicle_s = !back_vehicle.empty() && (target_lane != car.current_lane)? back_vehicle[5] : -999999;
 			
 			cost += 3 * pow(target_lane - car.current_lane, 2); //penalize lane changing in general
-			cost += 25 * exp(-((front_vehicle_s - car.s) - 15) / 10); //reward lane change if target lane front part is clear
-			cost += 2 * exp(-((car.s - back_vehicle_s) - 15) / 0.8); //reward lane change if target lane back part is clear
+			cost += 20 * exp(-((front_vehicle_s - car.s) - 15) / 10); //pennalize lane change if target lane front part is not clear
+			cost += 25 * exp(-((car.s - back_vehicle_s) - 10) / 2); //pennalize lane change if target lane back part is not clear
 			
-			// don;t change lane if there will be collision with car in the front
+			// don't change lane if there will be collision with car in the front
 			cost += !front_vehicle.empty() && (target_lane != car.current_lane) && (car.speed - vehicleSpeed(front_vehicle)) > (front_vehicle_s - car.s) ? 100000 : 0;
 
-			// don;t change lane if there will be collision with car behind
+			// don't change lane if there will be collision with car behind
 			double speed_diff = !back_vehicle.empty() ? vehicleSpeed(back_vehicle) - car.speed : -1;
 			double collision_cost = speed_diff > 0 && (target_lane != car.current_lane) ? 100 * pow(speed_diff, 2) : 0;
 			cost += collision_cost;
@@ -439,7 +439,7 @@ public:
 			if (distanceToFront < 35)
 			{
 				too_close = true;
-				targetSpeed = frontCarSpeed - 3;
+				targetSpeed = car.speed - 2;
 				timeToTarget = 4;
 			}
 		}
